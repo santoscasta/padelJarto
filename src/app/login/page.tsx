@@ -1,8 +1,7 @@
 import { redirect } from "next/navigation";
 import Image from "next/image";
-import { OAuthButtons } from "@/components/auth/oauth-buttons";
 import { Card } from "@/components/ui/card";
-import { hasSupabaseAuth, hasSupabaseData, isDemoEnabled } from "@/lib/env";
+import { isDemoEnabled } from "@/lib/env";
 import { getCurrentUser } from "@/lib/auth/session";
 import { signInAsDemoAction } from "@/app/auth-actions";
 import { sanitizeNextPath } from "@/lib/safe-next-path";
@@ -76,23 +75,6 @@ export default async function LoginPage({
         </section>
 
         <div className="space-y-5">
-          <Card className="rounded-[32px]">
-            <p className="text-xs uppercase tracking-[0.2em] text-[#fdba74]">Acceso</p>
-            <h2 className="mt-3 font-[family:var(--font-display)] text-3xl tracking-tight">Google y Apple</h2>
-            <p className="mt-3 text-sm leading-7 text-[#d6d3d1]">
-              {hasSupabaseData
-                ? "El acceso real está activo. Entra con tu cuenta para abrir tu panel privado."
-                : hasSupabaseAuth
-                  ? "El acceso está casi listo, pero todavía falta completar la configuración segura del servidor."
-                  : "El acceso real todavía no está habilitado en este entorno. Cuando esté listo podrás entrar con tu invitación y tu cuenta."}
-            </p>
-            {hasSupabaseData ? (
-              <div className="mt-6">
-                <OAuthButtons nextPath={nextPath} />
-              </div>
-            ) : null}
-          </Card>
-
           <Card className="rounded-[32px]">
             <p className="text-xs uppercase tracking-[0.2em] text-[#fdba74]">
               {isDemoEnabled ? "Demo instantánea" : "Acceso privado"}

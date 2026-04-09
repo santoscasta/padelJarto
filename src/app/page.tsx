@@ -11,7 +11,7 @@ const features = [
   ],
   [
     "Supabase-ready",
-    "Auth social con Google y Apple, datos listos para vivir en Supabase y despliegue directo en Vercel.",
+    "Datos listos para vivir en Supabase y despliegue directo en Vercel.",
   ],
 ] as const;
 
