@@ -42,9 +42,9 @@ export function AppShell({
                   </Link>
                 </Button>
                 <Button asChild variant="ghost">
-                  <Link href="/app/tournaments/new">
+                  <Link href="/app/events/new">
                     <Plus className="mr-2 size-4" />
-                    Nuevo torneo
+                    Nuevo evento
                   </Link>
                 </Button>
               </div>
