@@ -3,10 +3,15 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { DEMO_ORGANIZER_ID, DEMO_PLAYER_ID } from "@/lib/domain/mock-data";
+import { isDemoEnabled } from "@/lib/env";
 import { DEMO_SESSION_COOKIE } from "@/lib/auth/session";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export async function signInAsDemoAction(formData: FormData) {
+  if (!isDemoEnabled) {
+    redirect("/login");
+  }
+
   const requested = String(formData.get("session") ?? "organizer");
   const nextPath = String(formData.get("next") ?? "/app");
   const cookieStore = await cookies();

@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { DEMO_ORGANIZER_ID, DEMO_PLAYER_ID } from "@/lib/domain/mock-data";
 import { type Profile } from "@/lib/domain/types";
-import { hasSupabaseAuth } from "@/lib/env";
+import { hasSupabaseData, isDemoEnabled } from "@/lib/env";
 import { getTournamentRepository } from "@/lib/repositories";
 import { getDemoStore } from "@/lib/repositories/demo-store";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -10,7 +10,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 export const DEMO_SESSION_COOKIE = "padeljarto-demo-session";
 
 export async function getCurrentUser() {
-  if (hasSupabaseAuth) {
+  if (hasSupabaseData) {
     const supabase = await createSupabaseServerClient();
     if (supabase) {
       const {
@@ -32,6 +32,10 @@ export async function getCurrentUser() {
         return profile;
       }
     }
+  }
+
+  if (!isDemoEnabled) {
+    return null;
   }
 
   const cookieStore = await cookies();

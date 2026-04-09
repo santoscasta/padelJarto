@@ -42,6 +42,8 @@ npm install
 cp .env.example .env.local
 ```
 
+Para entorno local, el demo queda activo por defecto. En producción, desactívalo salvo que lo quieras exponer explícitamente.
+
 3. Arranca en desarrollo:
 
 ```bash
@@ -86,6 +88,22 @@ El proyecto ya trae:
 
 Para una puesta en producción completa, configura también `SUPABASE_SERVICE_ROLE_KEY` y aplica el esquema SQL.
 
+### Variables recomendadas para producción
+
+- `NEXT_PUBLIC_APP_URL=https://tu-dominio`
+- `NEXT_PUBLIC_SUPABASE_URL=...`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY=...`
+- `SUPABASE_SERVICE_ROLE_KEY=...`
+- `NEXT_PUBLIC_ENABLE_DEMO_MODE=false`
+
+### Checklist de Supabase para producción
+
+- aplica `supabase/schema.sql` al proyecto de producción
+- añade `https://tu-dominio/auth/callback` como redirect URL en Supabase Auth
+- configura Google y Apple OAuth en Supabase
+- usa un `SUPABASE_SERVICE_ROLE_KEY` solo en Vercel, nunca en cliente
+- verifica que el dominio público coincide con `NEXT_PUBLIC_APP_URL`
+
 ## Deploy
 
 El workflow de GitHub Actions está en `.github/workflows/deploy.yml` y despliega a Vercel al hacer push a `main` o al ejecutarlo manualmente.
@@ -97,3 +115,10 @@ Configura estos secrets en GitHub:
 - `VERCEL_PROJECT_ID`
 
 Las variables de Supabase se gestionan como variables de entorno del proyecto en Vercel.
+
+### Checklist de Vercel para producción
+
+- define `NEXT_PUBLIC_APP_URL` con la URL final de producción
+- define `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` y `SUPABASE_SERVICE_ROLE_KEY`
+- deja `NEXT_PUBLIC_ENABLE_DEMO_MODE=false` salvo que quieras un entorno demo público
+- configura los secrets del workflow si vas a desplegar desde GitHub Actions
