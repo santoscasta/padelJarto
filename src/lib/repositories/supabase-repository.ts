@@ -38,6 +38,74 @@ function sortSides(left: MatchSide, right: MatchSide) {
   return left.side === "home" ? -1 : 1;
 }
 
+function generateInvitationToken() {
+  return crypto.randomUUID();
+}
+
+function getAcceptedPlayerIds(bundle: TournamentBundle) {
+  return new Set(
+    bundle.memberships
+      .filter((membership) => membership.role === "player" && membership.status === "accepted")
+      .map((membership) => membership.userId),
+  );
+}
+
+function ensureAcceptedMembership(bundle: TournamentBundle, userId: string) {
+  const membership = bundle.memberships.find(
+    (entry) => entry.userId === userId && entry.status === "accepted",
+  );
+  invariant(membership, "No tienes acceso a este torneo.");
+  return membership;
+}
+
+function ensureMatchBelongsToTournament(bundle: TournamentBundle, matchId: string) {
+  const match = bundle.matches.find((entry) => entry.id === matchId);
+  invariant(match, "Partido no encontrado.");
+  invariant(match.tournamentId === bundle.tournament.id, "El partido no pertenece al torneo.");
+  return match;
+}
+
+function getSortedMatchSides(bundle: TournamentBundle, matchId: string) {
+  const sides = bundle.matchSides.filter((side) => side.matchId === matchId).sort(sortSides);
+  invariant(sides.length === 2, "El partido no tiene lados completos.");
+  return sides as [MatchSide, MatchSide];
+}
+
+function ensureTournamentPlayers(bundle: TournamentBundle, playerIds: string[]) {
+  const acceptedPlayerIds = getAcceptedPlayerIds(bundle);
+  playerIds.forEach((playerId) => {
+    invariant(acceptedPlayerIds.has(playerId), "Todos los jugadores deben pertenecer al torneo.");
+  });
+}
+
+function ensureDistinctPlayerIds(playerIds: string[], message: string) {
+  invariant(unique(playerIds).length === playerIds.length, message);
+}
+
+function validateScoreSets(sets: SubmitScoreInput["sets"]) {
+  invariant(sets.length > 0, "Debes enviar al menos un set.");
+
+  sets.forEach((set) => {
+    invariant(Number.isInteger(set.home) && set.home >= 0, "El marcador local no es valido.");
+    invariant(Number.isInteger(set.away) && set.away >= 0, "El marcador visitante no es valido.");
+    invariant(set.home !== set.away, "Un set no puede terminar empatado.");
+
+    if (set.tiebreakHome != null) {
+      invariant(
+        Number.isInteger(set.tiebreakHome) && set.tiebreakHome >= 0,
+        "El tiebreak local no es valido.",
+      );
+    }
+
+    if (set.tiebreakAway != null) {
+      invariant(
+        Number.isInteger(set.tiebreakAway) && set.tiebreakAway >= 0,
+        "El tiebreak visitante no es valido.",
+      );
+    }
+  });
+}
+
 function mapProfile(row: Record<string, unknown>): Profile {
   return {
     avatarUrl: (row.avatar_url as string | null | undefined) ?? null,
@@ -586,35 +654,42 @@ export class SupabaseTournamentRepository implements TournamentRepository {
     }
 
     const tournament = mapTournament(tournamentRow);
-    const { error: stageError } = await client.from("stages").insert([
-      {
-        id: `${tournament.id}-groups`,
-        name: "Fase de grupos",
-        sequence: 1,
-        tournament_id: tournament.id,
-        type: "groups",
-      },
-      {
-        id: `${tournament.id}-knockout`,
-        name: "Cuadro final",
-        sequence: 2,
-        tournament_id: tournament.id,
-        type: "knockout",
-      },
-    ]);
-    if (stageError) {
-      throw stageError;
-    }
+    try {
+      const { error: stageError } = await client.from("stages").insert([
+        {
+          name: "Fase de grupos",
+          sequence: 1,
+          tournament_id: tournament.id,
+          type: "groups",
+        },
+        {
+          name: "Cuadro final",
+          sequence: 2,
+          tournament_id: tournament.id,
+          type: "knockout",
+        },
+      ]);
+      if (stageError) {
+        throw stageError;
+      }
 
-    const { error: membershipError } = await client.from("tournament_memberships").insert({
-      joined_at: new Date().toISOString(),
-      role: "organizer",
-      status: "accepted",
-      tournament_id: tournament.id,
-      user_id: organizer.id,
-    });
-    if (membershipError) {
-      throw membershipError;
+      const { error: membershipError } = await client.from("tournament_memberships").insert({
+        joined_at: new Date().toISOString(),
+        role: "organizer",
+        status: "accepted",
+        tournament_id: tournament.id,
+        user_id: organizer.id,
+      });
+      if (membershipError) {
+        throw membershipError;
+      }
+    } catch (error) {
+      const { error: cleanupError } = await client.from("tournaments").delete().eq("id", tournament.id);
+      if (cleanupError) {
+        throw cleanupError;
+      }
+
+      throw error;
     }
 
     return tournament;
@@ -631,7 +706,7 @@ export class SupabaseTournamentRepository implements TournamentRepository {
       created_by: organizerId,
       invited_email: input.invitedEmail ?? null,
       status: "pending",
-      token: crypto.randomUUID().slice(0, 8),
+      token: generateInvitationToken(),
       tournament_id: input.tournamentId,
     };
     const { data, error } = await client
@@ -667,6 +742,7 @@ export class SupabaseTournamentRepository implements TournamentRepository {
     createBundleHelpers(bundle).ensureOrganizer(organizerId);
     invariant(bundle.tournament.mode === "fixed_pairs", "Solo aplica a torneos de parejas fijas.");
     invariant(input.playerIds[0] !== input.playerIds[1], "Una pareja no puede repetirse.");
+    ensureTournamentPlayers(bundle, input.playerIds);
 
     const existingUserIds = new Set(bundle.teamMembers.map((member) => member.userId));
     input.playerIds.forEach((playerId) => {
@@ -845,6 +921,7 @@ export class SupabaseTournamentRepository implements TournamentRepository {
     const bundle = await loadBundle(client, input.tournamentId);
     invariant(bundle, "Torneo no encontrado.");
     createBundleHelpers(bundle).ensureOrganizer(organizerId);
+    ensureMatchBelongsToTournament(bundle, input.matchId);
     const { error } = await client
       .from("matches")
       .update({
@@ -864,8 +941,19 @@ export class SupabaseTournamentRepository implements TournamentRepository {
     const bundle = await loadBundle(client, input.tournamentId);
     invariant(bundle, "Torneo no encontrado.");
     createBundleHelpers(bundle).ensureOrganizer(organizerId);
-    const sides = bundle.matchSides.filter((side) => side.matchId === input.matchId).sort(sortSides);
-    invariant(sides.length === 2, "El partido no tiene lados completos.");
+    invariant(
+      bundle.tournament.mode === "individual_ranking",
+      "Solo aplica a torneos de ranking individual.",
+    );
+    const match = ensureMatchBelongsToTournament(bundle, input.matchId);
+    const sides = getSortedMatchSides(bundle, input.matchId);
+    invariant(match.status !== "validated", "No se puede cambiar la pareja de un partido validado.");
+    const allPlayerIds = [
+      ...input.homePlayerIds,
+      ...input.awayPlayerIds,
+    ];
+    ensureDistinctPlayerIds(allPlayerIds, "Un jugador no puede ocupar dos plazas en el mismo partido.");
+    ensureTournamentPlayers(bundle, allPlayerIds);
 
     const [homeSide, awaySide] = sides;
     const { error } = await client.from("match_sides").upsert([
@@ -879,6 +967,17 @@ export class SupabaseTournamentRepository implements TournamentRepository {
 
   async submitScore(input: SubmitScoreInput, userId: string) {
     const client = this.client();
+    const bundle = await loadBundle(client, input.tournamentId);
+    invariant(bundle, "Torneo no encontrado.");
+    const membership = ensureAcceptedMembership(bundle, userId);
+    ensureMatchBelongsToTournament(bundle, input.matchId);
+    const sides = getSortedMatchSides(bundle, input.matchId);
+    validateScoreSets(input.sets);
+    invariant(
+      membership.role === "organizer" || sides.some((side) => side.playerIds.includes(userId)),
+      "No puedes reportar el resultado de este partido.",
+    );
+
     const { data, error } = await client
       .from("score_submissions")
       .insert({
@@ -1020,8 +1119,13 @@ export class SupabaseTournamentRepository implements TournamentRepository {
     const bundle = await loadBundle(client, tournamentId);
     invariant(bundle, "Torneo no encontrado.");
     createBundleHelpers(bundle).ensureOrganizer(organizerId);
+    invariant(bundle.tournament.mode === "fixed_pairs", "Esta acción automática solo aplica a parejas fijas.");
     const knockoutStage = bundle.stages.find((stage) => stage.type === "knockout");
     invariant(knockoutStage, "No existe fase eliminatoria.");
+    invariant(
+      !bundle.matches.some((match) => match.stageId === knockoutStage.id),
+      "El cuadro eliminatorio ya existe.",
+    );
     const entries = getQualifiedFixedEntries(bundle);
     const knockout = buildKnockoutMatches(bundle.tournament, knockoutStage, entries);
 
@@ -1065,8 +1169,16 @@ export class SupabaseTournamentRepository implements TournamentRepository {
     const bundle = await loadBundle(client, input.tournamentId);
     invariant(bundle, "Torneo no encontrado.");
     createBundleHelpers(bundle).ensureOrganizer(organizerId);
+    invariant(bundle.tournament.mode === "individual_ranking", "Solo aplica al modo individual.");
     const knockoutStage = bundle.stages.find((stage) => stage.type === "knockout");
     invariant(knockoutStage, "No existe fase eliminatoria.");
+    invariant(
+      !bundle.matches.some((match) => match.stageId === knockoutStage.id),
+      "La eliminatoria ya fue creada.",
+    );
+    const playerIds = input.pairs.flatMap((pair) => pair.playerIds);
+    ensureDistinctPlayerIds(playerIds, "No puedes repetir jugadores en distintas parejas.");
+    ensureTournamentPlayers(bundle, playerIds);
 
     const knockout = buildKnockoutMatches(
       bundle.tournament,

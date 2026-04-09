@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { DEMO_ORGANIZER_ID, DEMO_PLAYER_ID } from "@/lib/domain/mock-data";
 import { isDemoEnabled } from "@/lib/env";
 import { DEMO_SESSION_COOKIE } from "@/lib/auth/session";
+import { sanitizeNextPath } from "@/lib/safe-next-path";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export async function signInAsDemoAction(formData: FormData) {
@@ -13,7 +14,7 @@ export async function signInAsDemoAction(formData: FormData) {
   }
 
   const requested = String(formData.get("session") ?? "organizer");
-  const nextPath = String(formData.get("next") ?? "/app");
+  const nextPath = sanitizeNextPath(String(formData.get("next") ?? null));
   const cookieStore = await cookies();
   cookieStore.set(
     DEMO_SESSION_COOKIE,
@@ -22,6 +23,7 @@ export async function signInAsDemoAction(formData: FormData) {
       httpOnly: true,
       path: "/",
       sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
     },
   );
   redirect(nextPath);

@@ -5,7 +5,6 @@ import {
   findNextKnockoutSlot,
   snakeSeedIntoGroups,
 } from "@/lib/domain/schedule";
-import { DEMO_ORGANIZER_ID } from "@/lib/domain/mock-data";
 import { resolveMatchWinner } from "@/lib/domain/standings";
 import {
   type ConfigureIndividualKnockoutInput,
@@ -38,6 +37,10 @@ function sortSides(left: MatchSide, right: MatchSide) {
   }
 
   return left.side === "home" ? -1 : 1;
+}
+
+function generateInvitationToken() {
+  return crypto.randomUUID();
 }
 
 function getTournamentBundleFromStore(store: DemoStore, tournamentId: string) {
@@ -73,6 +76,70 @@ function ensureOrganizer(bundle: TournamentBundle, organizerId: string) {
     (entry) => entry.userId === organizerId && entry.role === "organizer" && entry.status === "accepted",
   );
   invariant(membership, "Solo el organizador puede hacer este cambio.");
+}
+
+function ensureAcceptedMembership(bundle: TournamentBundle, userId: string) {
+  const membership = bundle.memberships.find(
+    (entry) => entry.userId === userId && entry.status === "accepted",
+  );
+  invariant(membership, "No tienes acceso a este torneo.");
+  return membership;
+}
+
+function ensureMatchBelongsToTournament(bundle: TournamentBundle, matchId: string) {
+  const match = bundle.matches.find((entry) => entry.id === matchId);
+  invariant(match, "Partido no encontrado.");
+  invariant(match.tournamentId === bundle.tournament.id, "El partido no pertenece al torneo.");
+  return match;
+}
+
+function getSortedMatchSides(bundle: TournamentBundle, matchId: string) {
+  const sides = bundle.matchSides.filter((side) => side.matchId === matchId).sort(sortSides);
+  invariant(sides.length === 2, "El partido no tiene lados completos.");
+  return sides as [MatchSide, MatchSide];
+}
+
+function getAcceptedPlayerIds(bundle: TournamentBundle) {
+  return new Set(
+    bundle.memberships
+      .filter((membership) => membership.role === "player" && membership.status === "accepted")
+      .map((membership) => membership.userId),
+  );
+}
+
+function ensureTournamentPlayers(bundle: TournamentBundle, playerIds: string[]) {
+  const acceptedPlayerIds = getAcceptedPlayerIds(bundle);
+  playerIds.forEach((playerId) => {
+    invariant(acceptedPlayerIds.has(playerId), "Todos los jugadores deben pertenecer al torneo.");
+  });
+}
+
+function ensureDistinctPlayerIds(playerIds: string[], message: string) {
+  invariant(unique(playerIds).length === playerIds.length, message);
+}
+
+function validateScoreSets(sets: SubmitScoreInput["sets"]) {
+  invariant(sets.length > 0, "Debes enviar al menos un set.");
+
+  sets.forEach((set) => {
+    invariant(Number.isInteger(set.home) && set.home >= 0, "El marcador local no es valido.");
+    invariant(Number.isInteger(set.away) && set.away >= 0, "El marcador visitante no es valido.");
+    invariant(set.home !== set.away, "Un set no puede terminar empatado.");
+
+    if (set.tiebreakHome != null) {
+      invariant(
+        Number.isInteger(set.tiebreakHome) && set.tiebreakHome >= 0,
+        "El tiebreak local no es valido.",
+      );
+    }
+
+    if (set.tiebreakAway != null) {
+      invariant(
+        Number.isInteger(set.tiebreakAway) && set.tiebreakAway >= 0,
+        "El tiebreak visitante no es valido.",
+      );
+    }
+  });
 }
 
 function recomputeStandingsForTournament(bundle: TournamentBundle) {
@@ -376,7 +443,7 @@ export class DemoTournamentRepository implements TournamentRepository {
         id: crypto.randomUUID(),
         invitedEmail: input.invitedEmail || null,
         status: "pending",
-        token: crypto.randomUUID().slice(0, 8),
+        token: generateInvitationToken(),
         tournamentId: input.tournamentId,
       };
       store.invitations.push(invitation);
@@ -580,8 +647,7 @@ export class DemoTournamentRepository implements TournamentRepository {
       const bundle = getTournamentBundleFromStore(store, input.tournamentId);
       invariant(bundle, "Torneo no encontrado.");
       ensureOrganizer(bundle, organizerId);
-      const match = store.matches.find((entry) => entry.id === input.matchId);
-      invariant(match, "Partido no encontrado.");
+      const match = ensureMatchBelongsToTournament(bundle, input.matchId);
       match.court = input.court || null;
       match.scheduledAt = input.scheduledAt || null;
       if (match.status === "draft") {
@@ -597,15 +663,13 @@ export class DemoTournamentRepository implements TournamentRepository {
       invariant(bundle, "Torneo no encontrado.");
       ensureOrganizer(bundle, organizerId);
       invariant(bundle.tournament.mode === "individual_ranking", "Solo disponible en ranking individual.");
-      invariant(
-        unique([...input.homePlayerIds, ...input.awayPlayerIds]).length === 4,
-        "Cada jugador solo puede aparecer una vez por partido.",
-      );
+      const match = ensureMatchBelongsToTournament(bundle, input.matchId);
+      invariant(match.status !== "validated", "No se puede cambiar la pareja de un partido validado.");
+      const allPlayerIds = [...input.homePlayerIds, ...input.awayPlayerIds];
+      ensureDistinctPlayerIds(allPlayerIds, "Cada jugador solo puede aparecer una vez por partido.");
+      ensureTournamentPlayers(bundle, allPlayerIds);
 
-      const sides = store.matchSides
-        .filter((entry) => entry.matchId === input.matchId)
-        .sort(sortSides);
-      invariant(sides.length === 2, "El partido no tiene lados completos.");
+      const sides = getSortedMatchSides(bundle, input.matchId);
       sides[0].playerIds = [...input.homePlayerIds];
       sides[1].playerIds = [...input.awayPlayerIds];
     });
@@ -615,11 +679,12 @@ export class DemoTournamentRepository implements TournamentRepository {
     mutateDemoStore((store) => {
       const bundle = getTournamentBundleFromStore(store, input.tournamentId);
       invariant(bundle, "Torneo no encontrado.");
-      const match = bundle.matches.find((entry) => entry.id === input.matchId);
-      invariant(match, "Partido no encontrado.");
-      const sides = bundle.matchSides.filter((side) => side.matchId === input.matchId);
+      const membership = ensureAcceptedMembership(bundle, userId);
+      ensureMatchBelongsToTournament(bundle, input.matchId);
+      const sides = getSortedMatchSides(bundle, input.matchId);
+      validateScoreSets(input.sets);
       invariant(
-        sides.some((side) => side.playerIds.includes(userId)) || userId === DEMO_ORGANIZER_ID,
+        membership.role === "organizer" || sides.some((side) => side.playerIds.includes(userId)),
         "No puedes reportar un partido ajeno.",
       );
 
@@ -722,11 +787,18 @@ export class DemoTournamentRepository implements TournamentRepository {
         "La eliminatoria ya fue creada.",
       );
 
+      const acceptedPlayerIds = getAcceptedPlayerIds(bundle);
       const uniquePlayers = unique(input.pairs.flatMap((pair) => pair.playerIds));
       invariant(
         uniquePlayers.length === input.pairs.length * 2,
         "No puedes repetir jugadores en distintas parejas.",
       );
+      input.pairs.forEach((pair) => {
+        invariant(pair.playerIds[0] !== pair.playerIds[1], "Una pareja no puede repetirse.");
+        pair.playerIds.forEach((playerId) => {
+          invariant(acceptedPlayerIds.has(playerId), "Todos los jugadores deben pertenecer al torneo.");
+        });
+      });
 
       const knockout = buildKnockoutMatches(
         bundle.tournament,

@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { hasSupabaseAuth, hasSupabaseData, isDemoEnabled } from "@/lib/env";
 import { getCurrentUser } from "@/lib/auth/session";
 import { signInAsDemoAction } from "@/app/auth-actions";
+import { sanitizeNextPath } from "@/lib/safe-next-path";
 
 export default async function LoginPage({
   searchParams,
@@ -12,7 +13,7 @@ export default async function LoginPage({
 }) {
   const user = await getCurrentUser();
   const resolvedSearchParams = await searchParams;
-  const nextPath = resolvedSearchParams.next ?? "/app";
+  const nextPath = sanitizeNextPath(resolvedSearchParams.next);
 
   if (user) {
     redirect(nextPath);
