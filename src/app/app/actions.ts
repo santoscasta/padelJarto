@@ -93,13 +93,32 @@ export async function createInvitationAction(formData: FormData) {
   const currentUser = await requireCurrentUser();
   const repository = getTournamentRepository();
   const tournamentId = String(formData.get("tournamentId"));
-  await repository.createInvitation(
+  const invitedEmail = String(formData.get("invitedEmail") ?? "").trim().toLowerCase() || undefined;
+
+  const invitation = await repository.createInvitation(
     {
-      invitedEmail: String(formData.get("invitedEmail") ?? "").trim() || undefined,
+      invitedEmail,
       tournamentId,
     },
     currentUser.id,
   );
+
+  // If an email was provided, ask Supabase to send an invite email linking to
+  // the invitation acceptance URL. Non-fatal: if sending fails we still keep
+  // the invitation so the organizer can share the link manually.
+  if (invitedEmail) {
+    const { createSupabaseAdminClient } = await import("@/lib/supabase/admin");
+    const { getAppUrl } = await import("@/lib/env");
+    const admin = createSupabaseAdminClient();
+    if (admin) {
+      const redirectTo = `${getAppUrl()}/invite/${invitation.token}`;
+      try {
+        await admin.auth.admin.inviteUserByEmail(invitedEmail, { redirectTo });
+      } catch {
+        // swallow: keep the invitation anyway
+      }
+    }
+  }
 
   revalidatePath(`/app/tournaments/${tournamentId}`);
 }

@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { CheckCircle2, Clock3, Flag, Link2, MessageCircle, ShieldCheck, Users } from "lucide-react";
 import { KnockoutBracket } from "@/components/tournament/knockout-bracket";
+import { RealtimeRefresher } from "@/components/tournament/realtime-refresher";
 import { StandingsTable } from "@/components/tournament/standings-table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -88,6 +89,7 @@ export default async function TournamentDetailPage({
 
   return (
     <div className="space-y-6">
+      <RealtimeRefresher tournamentId={detail.tournament.id} />
       <Card className="surface-grid overflow-hidden">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div>
