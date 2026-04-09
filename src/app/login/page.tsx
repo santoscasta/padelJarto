@@ -24,28 +24,28 @@ export default async function LoginPage({
     <main className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(249,115,22,0.2),_transparent_30%),linear-gradient(180deg,#100c0b_0%,#1a1311_100%)] px-4 py-8 text-[#fff7ed] sm:px-6">
       <div className="mx-auto grid max-w-6xl gap-8 lg:grid-cols-[1.1fr_0.9fr]">
         <section className="rounded-[36px] border border-white/10 bg-[#16110f]/85 p-8 shadow-[0_30px_120px_rgba(0,0,0,0.35)] sm:p-10">
-          <p className="text-xs uppercase tracking-[0.28em] text-[#fdba74]">Private access</p>
+          <p className="text-xs uppercase tracking-[0.28em] text-[#fdba74]">Acceso al torneo</p>
           <h1 className="mt-5 font-[family:var(--font-display)] text-5xl leading-[0.95] tracking-tight sm:text-6xl">
-            Entra al torneo con rol de organizador o jugador.
+            Entra con tu invitación y tu rol listo para jugar.
           </h1>
           <p className="mt-5 max-w-xl text-lg leading-8 text-[#d6d3d1]">
             {isDemoEnabled
-              ? "Si conectas Supabase tendrás login social real. Mientras tanto, el demo te deja revisar el flujo completo de creación, resultados y validación sin configurar nada más."
-              : "Configura Supabase completo para ofrecer acceso real con OAuth, persistencia de datos y panel privado sin atajos de demo."}
+              ? "Si conectas Supabase tendrás acceso real con login social. Mientras tanto, el demo te deja recorrer la creación del torneo, los resultados y la validación sin bloquearte."
+              : "Accede desde un único panel para gestionar el torneo, revisar partidos, validar marcadores y mover todo el flujo sin salir de la app."}
           </p>
           <div className="mt-8 grid gap-3 sm:grid-cols-2">
             <Card className="rounded-[28px] bg-black/25">
-              <p className="text-xs uppercase tracking-[0.2em] text-[#fb923c]">Organizer</p>
-              <p className="mt-3 text-2xl font-semibold">Control total</p>
+              <p className="text-xs uppercase tracking-[0.2em] text-[#fb923c]">Organizador</p>
+              <p className="mt-3 text-2xl font-semibold">Todo bajo control</p>
               <p className="mt-2 text-sm text-[#d6d3d1]">
-                Crea torneos, gestiona invitaciones, genera grupos, valida marcadores y arma el cuadro.
+                Crea torneos, invita por enlace o email, genera grupos, valida marcadores y monta el cuadro final.
               </p>
             </Card>
             <Card className="rounded-[28px] bg-black/25">
-              <p className="text-xs uppercase tracking-[0.2em] text-[#fde68a]">Player</p>
-              <p className="mt-3 text-2xl font-semibold">Calendario y resultados</p>
+              <p className="text-xs uppercase tracking-[0.2em] text-[#fde68a]">Jugador</p>
+              <p className="mt-3 text-2xl font-semibold">Tus partidos a mano</p>
               <p className="mt-2 text-sm text-[#d6d3d1]">
-                Consulta tus partidos, la clasificación y sube resultados por sets.
+                Consulta el calendario, revisa la clasificación y sube resultados por sets sin salir del torneo.
               </p>
             </Card>
           </div>
@@ -54,18 +54,18 @@ export default async function LoginPage({
             <div className="flex flex-col gap-3 border-b border-white/10 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="text-[0.68rem] font-semibold uppercase tracking-[0.28em] text-[#fdba74]">
-                  Access flow
+                  Recorrido
                 </p>
                 <p className="mt-1 text-sm text-[#fff7ed]">
-                  Invitacion, login y validacion alineados en el mismo recorrido.
+                  Invitación, acceso y validación conectados en un mismo flujo.
                 </p>
               </div>
               <div className="inline-flex w-fit rounded-full border border-white/12 bg-white/6 px-3 py-2 text-[0.68rem] font-semibold uppercase tracking-[0.22em] text-[#ffe7d0]">
-                Private MVP
+                Acceso privado
               </div>
             </div>
             <Image
-              alt="Ilustracion del flujo privado de acceso con invitaciones, login y aprobacion."
+              alt="Ilustración del recorrido de acceso con invitación, inicio de sesión y aprobación."
               className="h-auto w-full"
               height={900}
               priority
@@ -77,14 +77,14 @@ export default async function LoginPage({
 
         <div className="space-y-5">
           <Card className="rounded-[32px]">
-            <p className="text-xs uppercase tracking-[0.2em] text-[#fdba74]">Supabase Auth</p>
+            <p className="text-xs uppercase tracking-[0.2em] text-[#fdba74]">Acceso</p>
             <h2 className="mt-3 font-[family:var(--font-display)] text-3xl tracking-tight">Google y Apple</h2>
             <p className="mt-3 text-sm leading-7 text-[#d6d3d1]">
               {hasSupabaseData
-                ? "La configuración pública y server-side de Supabase está lista. Puedes autenticarte con OAuth."
+                ? "El acceso real está activo. Entra con tu cuenta para abrir tu panel privado."
                 : hasSupabaseAuth
-                  ? "Falta SUPABASE_SERVICE_ROLE_KEY. No se ofrece OAuth hasta completar la configuración server-side."
-                  : "Configura NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY y SUPABASE_SERVICE_ROLE_KEY para activar el modo Supabase completo."}
+                  ? "El acceso está casi listo, pero todavía falta completar la configuración segura del servidor."
+                  : "El acceso real todavía no está habilitado en este entorno. Cuando esté listo podrás entrar con tu invitación y tu cuenta."}
             </p>
             {hasSupabaseData ? (
               <div className="mt-6">
@@ -95,10 +95,10 @@ export default async function LoginPage({
 
           <Card className="rounded-[32px]">
             <p className="text-xs uppercase tracking-[0.2em] text-[#fdba74]">
-              {isDemoEnabled ? "Demo instantánea" : "Acceso restringido"}
+              {isDemoEnabled ? "Demo instantánea" : "Acceso privado"}
             </p>
             <h2 className="mt-3 font-[family:var(--font-display)] text-3xl tracking-tight">
-              {isDemoEnabled ? "Explora el MVP ya" : "Solo modo real"}
+              {isDemoEnabled ? "Explora el MVP ya" : "Solo con invitación"}
             </h2>
             {isDemoEnabled ? (
               <div className="mt-6 grid gap-3">
@@ -119,7 +119,7 @@ export default async function LoginPage({
               </div>
             ) : (
               <p className="mt-3 text-sm leading-7 text-[#d6d3d1]">
-                El modo demo está desactivado. Para entrar necesitas la configuración completa de Supabase.
+                Este entorno no ofrece modo demo. Cuando el acceso esté activo, entrarás con tu cuenta y la invitación del torneo.
               </p>
             )}
           </Card>
