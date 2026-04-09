@@ -104,6 +104,20 @@ export async function createInvitationAction(formData: FormData) {
   revalidatePath(`/app/tournaments/${tournamentId}`);
 }
 
+export async function createWhatsAppInvitationAction(formData: FormData) {
+  const currentUser = await requireCurrentUser();
+  const repository = getTournamentRepository();
+  const tournamentId = String(formData.get("tournamentId"));
+  const invitation = await repository.createInvitation(
+    {
+      tournamentId,
+    },
+    currentUser.id,
+  );
+
+  redirect(`/app/tournaments/${tournamentId}?share=${encodeURIComponent(invitation.token)}`);
+}
+
 export async function createTeamAction(formData: FormData) {
   const currentUser = await requireCurrentUser();
   const repository = getTournamentRepository();

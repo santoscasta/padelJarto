@@ -26,10 +26,10 @@ export default async function InvitationPage({
           <p className="text-xs uppercase tracking-[0.2em] text-[#fdba74]">Invitación privada</p>
           <h1 className="mt-4 font-[family:var(--font-display)] text-4xl tracking-tight">Necesitas iniciar sesión para aceptar esta invitación.</h1>
           <p className="mt-4 text-sm leading-7 text-[#d6d3d1]">
-            Cuando entres, podrás aceptar el acceso al torneo con este enlace.
+            Si es tu primera vez, no pasa nada: entra con tu cuenta o crea acceso al continuar y luego podrás aceptar tu plaza con este mismo enlace.
           </p>
           <Button asChild className="mt-6">
-            <Link href={`/login?next=/invite/${token}`}>Ir a login</Link>
+            <Link href={`/login?next=/invite/${token}`}>Entrar y aceptar invitación</Link>
           </Button>
         </Card>
       </main>
@@ -44,8 +44,7 @@ export default async function InvitationPage({
           Acepta tu plaza en el torneo.
         </h1>
         <p className="mt-4 text-sm leading-7 text-[#d6d3d1]">
-          La invitación usa el token <span className="font-mono text-[#fff7ed]">{invitation.token}</span>. Al aceptarla,
-          entrarás como jugador y verás el torneo dentro del dashboard.
+          Al aceptarla, entrarás como jugador y verás el torneo dentro del dashboard. Si acabas de entrar por primera vez, esta invitación quedará vinculada a tu cuenta actual.
         </p>
         <form action={acceptInvitationAction} className="mt-8">
           <input name="token" type="hidden" value={invitation.token} />

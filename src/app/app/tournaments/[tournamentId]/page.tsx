@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { CheckCircle2, Clock3, Flag, ShieldCheck, Users } from "lucide-react";
+import { CheckCircle2, Clock3, Flag, Link2, MessageCircle, ShieldCheck, Users } from "lucide-react";
 import { KnockoutBracket } from "@/components/tournament/knockout-bracket";
 import { StandingsTable } from "@/components/tournament/standings-table";
 import { Badge } from "@/components/ui/badge";
@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card";
 import {
   configureIndividualKnockoutAction,
   createInvitationAction,
+  createWhatsAppInvitationAction,
   createTeamAction,
   generateGroupStageAction,
   generateKnockoutAction,
@@ -23,6 +24,7 @@ import {
   qualifiedPlayers,
   userCanReportMatch,
 } from "@/lib/domain/selectors";
+import { getAppUrl } from "@/lib/env";
 import { getTournamentRepository } from "@/lib/repositories";
 import { formatDateLabel, formatDateTimeLabel, toDateTimeLocalInput } from "@/lib/utils";
 
@@ -30,12 +32,38 @@ function summarizeSubmission(sets: Array<{ home: number; away: number }>) {
   return sets.map((set) => `${set.home}-${set.away}`).join(" · ");
 }
 
+function buildInvitationUrl(token: string) {
+  return `${getAppUrl()}/invite/${token}`;
+}
+
+function buildWhatsAppShareUrl(
+  tournament: {
+    name: string;
+    startsAt: string;
+    location?: string | null;
+  },
+  token: string,
+) {
+  const inviteUrl = buildInvitationUrl(token);
+  const parts = [
+    `Te invito a unirte al torneo "${tournament.name}" en PadelJarto.`,
+    `Fecha: ${formatDateLabel(tournament.startsAt)}${tournament.location ? ` · ${tournament.location}` : ""}.`,
+    "Si es tu primera vez, entra con tu cuenta o crea acceso al abrir el enlace.",
+    `Invitacion: ${inviteUrl}`,
+  ];
+
+  return `https://wa.me/?text=${encodeURIComponent(parts.join("\n"))}`;
+}
+
 export default async function TournamentDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ tournamentId: string }>;
+  searchParams: Promise<{ share?: string }>;
 }) {
   const { tournamentId } = await params;
+  const resolvedSearchParams = await searchParams;
   const currentUser = await requireCurrentUser();
   const detail = await getTournamentRepository().getTournamentDetail(tournamentId, currentUser.id);
 
@@ -54,6 +82,9 @@ export default async function TournamentDetailPage({
     detail.tournament.mode === "individual_ranking" &&
     qualifiers.length >= detail.tournament.config.knockoutSize * 2 &&
     !detail.knockoutRounds.length;
+  const pendingInvitations = detail.invitations.filter((invitation) => invitation.status === "pending");
+  const shareInvitation =
+    pendingInvitations.find((invitation) => invitation.token === resolvedSearchParams.share) ?? null;
 
   return (
     <div className="space-y-6">
@@ -112,15 +143,46 @@ export default async function TournamentDetailPage({
                   <ShieldCheck className="size-4 text-[#fb923c]" />
                   <p className="text-sm font-semibold">Invitaciones pendientes</p>
                 </div>
-                <ul className="mt-4 space-y-2 text-sm text-[#d6d3d1]">
-                  {detail.invitations
-                    .filter((invitation) => invitation.status === "pending")
-                    .map((invitation) => (
-                      <li key={invitation.id}>
-                        {invitation.invitedEmail || "Enlace abierto"} · /invite/{invitation.token}
-                      </li>
-                    ))}
-                </ul>
+                {pendingInvitations.length ? (
+                  <div className="mt-4 space-y-3">
+                    {pendingInvitations.map((invitation) => {
+                      const invitationUrl = buildInvitationUrl(invitation.token);
+                      const whatsAppShareUrl = buildWhatsAppShareUrl(detail.tournament, invitation.token);
+
+                      return (
+                        <article
+                          key={invitation.id}
+                          className="rounded-[20px] border border-white/10 bg-white/5 p-3"
+                        >
+                          <p className="font-medium text-[#fff7ed]">
+                            {invitation.invitedEmail || "Invitacion por enlace compartible"}
+                          </p>
+                          <p className="mt-1 break-all text-xs text-[#a8a29e]">{invitationUrl}</p>
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            {!invitation.invitedEmail ? (
+                              <Button asChild className="h-9 px-4" variant="secondary">
+                                <a href={whatsAppShareUrl} rel="noreferrer" target="_blank">
+                                  <MessageCircle className="mr-2 size-4" />
+                                  Compartir por WhatsApp
+                                </a>
+                              </Button>
+                            ) : null}
+                            <Button asChild className="h-9 px-4" variant="ghost">
+                              <a href={invitationUrl} rel="noreferrer" target="_blank">
+                                <Link2 className="mr-2 size-4" />
+                                Abrir enlace
+                              </a>
+                            </Button>
+                          </div>
+                        </article>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="mt-4 text-sm text-[#d6d3d1]">
+                    Aun no has generado invitaciones para este torneo.
+                  </p>
+                )}
               </div>
             </div>
           </Card>
@@ -129,18 +191,63 @@ export default async function TournamentDetailPage({
             <Card>
               <p className="text-xs uppercase tracking-[0.2em] text-[#fdba74]">Controles del organizer</p>
               <div className="mt-5 space-y-6">
-                <form action={createInvitationAction} className="grid gap-3">
-                  <input name="tournamentId" type="hidden" value={detail.tournament.id} />
-                  <label className="field-label" htmlFor="invitedEmail">
-                    Invitar jugador por email
-                  </label>
-                  <div className="flex flex-col gap-3 sm:flex-row">
-                    <input className="field-input" id="invitedEmail" name="invitedEmail" placeholder="amigo@correo.com" />
-                    <Button className="shrink-0" type="submit" variant="secondary">
-                      Crear invitación
-                    </Button>
+                {shareInvitation ? (
+                  <div className="rounded-[24px] border border-[#f97316]/30 bg-[#f97316]/10 p-4">
+                    <p className="text-xs uppercase tracking-[0.2em] text-[#fdba74]">Invitacion lista para compartir</p>
+                    <p className="mt-3 text-sm leading-7 text-[#ffe7d0]">
+                      El enlace ya esta creado. Si es la primera vez de tu amigo, entrara con su cuenta y luego aceptara la plaza desde este link.
+                    </p>
+                    <p className="mt-3 break-all rounded-[18px] border border-white/10 bg-black/20 px-4 py-3 text-xs text-[#d6d3d1]">
+                      {buildInvitationUrl(shareInvitation.token)}
+                    </p>
+                    <div className="mt-4 flex flex-wrap gap-3">
+                      <Button asChild>
+                        <a
+                          href={buildWhatsAppShareUrl(detail.tournament, shareInvitation.token)}
+                          rel="noreferrer"
+                          target="_blank"
+                        >
+                          <MessageCircle className="mr-2 size-4" />
+                          Abrir WhatsApp
+                        </a>
+                      </Button>
+                      <Button asChild variant="ghost">
+                        <a href={buildInvitationUrl(shareInvitation.token)} rel="noreferrer" target="_blank">
+                          <Link2 className="mr-2 size-4" />
+                          Ver enlace
+                        </a>
+                      </Button>
+                    </div>
                   </div>
-                </form>
+                ) : null}
+
+                <div className="grid gap-4 xl:grid-cols-2">
+                  <form action={createInvitationAction} className="grid gap-3 rounded-[24px] border border-white/10 bg-black/15 p-4">
+                    <input name="tournamentId" type="hidden" value={detail.tournament.id} />
+                    <label className="field-label" htmlFor="invitedEmail">
+                      Invitar jugador
+                    </label>
+                    <p className="text-sm leading-7 text-[#d6d3d1]">
+                      Si ya sabes su email, enviale una invitacion directa para que entre con esa cuenta.
+                    </p>
+                    <input className="field-input" id="invitedEmail" name="invitedEmail" placeholder="amigo@correo.com" />
+                    <Button className="w-fit" type="submit" variant="secondary">
+                      Enviar invitacion por email
+                    </Button>
+                  </form>
+
+                  <form action={createWhatsAppInvitationAction} className="grid gap-3 rounded-[24px] border border-white/10 bg-black/15 p-4">
+                    <input name="tournamentId" type="hidden" value={detail.tournament.id} />
+                    <p className="field-label">Invitar jugador</p>
+                    <p className="text-sm leading-7 text-[#d6d3d1]">
+                      Si prefieres compartirlo por WhatsApp o todavia no tiene cuenta, prepara un enlace y mandaselo directamente.
+                    </p>
+                    <Button className="w-fit" type="submit">
+                      <MessageCircle className="mr-2 size-4" />
+                      Compartir por WhatsApp
+                    </Button>
+                  </form>
+                </div>
 
                 {detail.tournament.mode === "fixed_pairs" ? (
                   <form action={createTeamAction} className="grid gap-3">

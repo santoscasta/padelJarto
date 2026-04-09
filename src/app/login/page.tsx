@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Image from "next/image";
 import { OAuthButtons } from "@/components/auth/oauth-buttons";
 import { Card } from "@/components/ui/card";
 import { hasSupabaseAuth, hasSupabaseData, isDemoEnabled } from "@/lib/env";
@@ -47,6 +48,30 @@ export default async function LoginPage({
                 Consulta tus partidos, la clasificación y sube resultados por sets.
               </p>
             </Card>
+          </div>
+
+          <div className="mt-8 overflow-hidden rounded-[30px] border border-white/10 bg-black/22">
+            <div className="flex flex-col gap-3 border-b border-white/10 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-[0.68rem] font-semibold uppercase tracking-[0.28em] text-[#fdba74]">
+                  Access flow
+                </p>
+                <p className="mt-1 text-sm text-[#fff7ed]">
+                  Invitacion, login y validacion alineados en el mismo recorrido.
+                </p>
+              </div>
+              <div className="inline-flex w-fit rounded-full border border-white/12 bg-white/6 px-3 py-2 text-[0.68rem] font-semibold uppercase tracking-[0.22em] text-[#ffe7d0]">
+                Private MVP
+              </div>
+            </div>
+            <Image
+              alt="Ilustracion del flujo privado de acceso con invitaciones, login y aprobacion."
+              className="h-auto w-full"
+              height={900}
+              priority
+              src="/images/login-access-flow.svg"
+              width={1200}
+            />
           </div>
         </section>
 
