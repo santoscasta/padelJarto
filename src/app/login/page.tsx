@@ -1,19 +1,21 @@
 import { redirect } from "next/navigation";
 import Image from "next/image";
 import { Card } from "@/components/ui/card";
-import { isDemoEnabled } from "@/lib/env";
+import { hasSupabaseAuth, isDemoEnabled } from "@/lib/env";
 import { getCurrentUser } from "@/lib/auth/session";
-import { signInAsDemoAction } from "@/app/auth-actions";
+import { sendMagicLinkAction, signInAsDemoAction } from "@/app/auth-actions";
 import { sanitizeNextPath } from "@/lib/safe-next-path";
 
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string }>;
+  searchParams: Promise<{ next?: string; sent?: string; error?: string }>;
 }) {
   const user = await getCurrentUser();
   const resolvedSearchParams = await searchParams;
   const nextPath = sanitizeNextPath(resolvedSearchParams.next);
+  const magicLinkSent = resolvedSearchParams.sent === "1";
+  const magicLinkError = resolvedSearchParams.error;
 
   if (user) {
     redirect(nextPath);
@@ -75,6 +77,48 @@ export default async function LoginPage({
         </section>
 
         <div className="space-y-5">
+          {hasSupabaseAuth ? (
+            <Card className="rounded-[32px]">
+              <p className="text-xs uppercase tracking-[0.2em] text-[#fdba74]">Acceso por email</p>
+              <h2 className="mt-3 font-[family:var(--font-display)] text-3xl tracking-tight">
+                Enlace mágico
+              </h2>
+              <p className="mt-3 text-sm leading-7 text-[#d6d3d1]">
+                Te mandamos un enlace a tu email. Al pulsarlo entras directamente, sin contraseña.
+              </p>
+              <form action={sendMagicLinkAction} className="mt-6 space-y-3">
+                <input name="next" type="hidden" value={nextPath} />
+                <input
+                  className="w-full rounded-2xl border border-white/15 bg-black/30 px-4 py-3 text-sm text-[#fff7ed] placeholder:text-[#a8a29e] focus:border-[#fb923c] focus:outline-none"
+                  name="email"
+                  placeholder="tu@email.com"
+                  required
+                  type="email"
+                />
+                <button
+                  className="w-full rounded-2xl bg-[#f97316] px-5 py-4 text-sm font-semibold text-[#1c1917] transition hover:bg-[#fb923c]"
+                  type="submit"
+                >
+                  Enviarme el enlace
+                </button>
+              </form>
+              {magicLinkSent ? (
+                <p className="mt-3 text-sm text-[#bbf7d0]">
+                  Listo — revisa tu bandeja de entrada.
+                </p>
+              ) : null}
+              {magicLinkError ? (
+                <p className="mt-3 text-sm text-[#fecaca]">
+                  {magicLinkError === "invalid_email"
+                    ? "Email inválido."
+                    : magicLinkError === "send_failed"
+                      ? "No se pudo enviar el enlace. Inténtalo de nuevo."
+                      : "Acceso no disponible."}
+                </p>
+              ) : null}
+            </Card>
+          ) : null}
+
           <Card className="rounded-[32px]">
             <p className="text-xs uppercase tracking-[0.2em] text-[#fdba74]">
               {isDemoEnabled ? "Demo instantánea" : "Acceso privado"}
