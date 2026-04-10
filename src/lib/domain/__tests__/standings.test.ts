@@ -19,13 +19,15 @@ function makeTournament(mode: Tournament["mode"]): Tournament {
     },
     createdAt: "2026-04-06T10:00:00.000Z",
     endsAt: "2026-04-20T20:00:00.000Z",
+    format: "league_playoff",
     id: "test-tournament",
     mode,
     name: "Test Tournament",
     organizerId: "organizer",
+    pairMode: "fixed",
     slug: "test-tournament",
     startsAt: "2026-04-06T10:00:00.000Z",
-    status: "live",
+    status: "in_progress",
     visibility: "private",
   };
 }

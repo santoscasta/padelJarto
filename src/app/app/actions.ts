@@ -12,11 +12,13 @@ import { getTournamentRepository } from "@/lib/repositories";
 
 const createTournamentSchema = z.object({
   endsAt: z.string().min(1),
+  format: z.enum(["league", "playoff", "league_playoff"]).default("league_playoff"),
   groupCount: z.coerce.number().int().min(1).max(8),
   knockoutSize: z.coerce.number().int().min(2).max(8),
   location: z.string().optional(),
   mode: z.enum(["fixed_pairs", "individual_ranking"]),
   name: z.string().min(3),
+  pairMode: z.enum(["fixed", "variable"]).default("fixed"),
   qualifiersPerGroup: z.coerce.number().int().min(1).max(8),
   startsAt: z.string().min(1),
 });
@@ -68,11 +70,13 @@ export async function createTournamentAction(formData: FormData) {
   const repository = getTournamentRepository();
   const parsed = createTournamentSchema.parse({
     endsAt: formData.get("endsAt"),
+    format: formData.get("format") ?? "league_playoff",
     groupCount: formData.get("groupCount"),
     knockoutSize: formData.get("knockoutSize"),
     location: formData.get("location"),
     mode: formData.get("mode"),
     name: formData.get("name"),
+    pairMode: formData.get("pairMode") ?? "fixed",
     qualifiersPerGroup: formData.get("qualifiersPerGroup"),
     startsAt: formData.get("startsAt"),
   });
@@ -269,4 +273,120 @@ export async function acceptInvitationAction(formData: FormData) {
     currentUser,
   );
   redirect(`/app/tournaments/${tournamentId}`);
+}
+
+export async function rejectInvitationAction(formData: FormData) {
+  const currentUser = await requireCurrentUser();
+  const repository = getTournamentRepository();
+  await repository.rejectInvitation(
+    String(formData.get("invitationId")),
+    currentUser.id,
+  );
+  revalidatePath("/app");
+}
+
+export async function publishTournamentAction(formData: FormData) {
+  const currentUser = await requireCurrentUser();
+  const repository = getTournamentRepository();
+  const tournamentId = String(formData.get("tournamentId"));
+  await repository.publishTournament(tournamentId, currentUser.id);
+  revalidatePath(`/app/tournaments/${tournamentId}`);
+}
+
+export async function cancelTournamentAction(formData: FormData) {
+  const currentUser = await requireCurrentUser();
+  const repository = getTournamentRepository();
+  const tournamentId = String(formData.get("tournamentId"));
+  await repository.cancelTournament(tournamentId, currentUser.id);
+  revalidatePath(`/app/tournaments/${tournamentId}`);
+}
+
+export async function proposeResultAction(formData: FormData) {
+  const currentUser = await requireCurrentUser();
+  const repository = getTournamentRepository();
+  const tournamentId = String(formData.get("tournamentId"));
+  const matchId = String(formData.get("matchId"));
+  const winnerSide = String(formData.get("winnerSide")) as "home" | "away";
+  const sets = parseScoreSets(formData);
+  const notes = String(formData.get("notes") ?? "").trim() || undefined;
+
+  await repository.proposeResult(
+    { tournamentId, matchId, sets, winnerSide, notes },
+    currentUser.id,
+  );
+  revalidatePath(`/app/tournaments/${tournamentId}`);
+}
+
+export async function validateResultAction(formData: FormData) {
+  const currentUser = await requireCurrentUser();
+  const repository = getTournamentRepository();
+  const tournamentId = String(formData.get("tournamentId"));
+  const proposalId = String(formData.get("proposalId"));
+  const decision = String(formData.get("decision")) as "accept" | "reject";
+  const reason = String(formData.get("reason") ?? "").trim() || undefined;
+
+  await repository.validateResult(
+    { tournamentId, proposalId, decision, reason },
+    currentUser.id,
+  );
+  revalidatePath(`/app/tournaments/${tournamentId}`);
+}
+
+export async function resolveDisputeAction(formData: FormData) {
+  const currentUser = await requireCurrentUser();
+  const repository = getTournamentRepository();
+  const tournamentId = String(formData.get("tournamentId"));
+  const matchId = String(formData.get("matchId"));
+  const winnerSide = String(formData.get("winnerSide")) as "home" | "away";
+  const sets = parseScoreSets(formData);
+  const reason = String(formData.get("reason") ?? "").trim();
+
+  await repository.resolveDispute(
+    { tournamentId, matchId, sets, winnerSide, reason },
+    currentUser.id,
+  );
+  revalidatePath(`/app/tournaments/${tournamentId}`);
+}
+
+export async function closeMatchAction(formData: FormData) {
+  const currentUser = await requireCurrentUser();
+  const repository = getTournamentRepository();
+  const tournamentId = String(formData.get("tournamentId"));
+  const matchId = String(formData.get("matchId"));
+  await repository.closeMatch(matchId, currentUser.id);
+  revalidatePath(`/app/tournaments/${tournamentId}`);
+}
+
+export async function updateProfileAction(formData: FormData) {
+  const currentUser = await requireCurrentUser();
+  const repository = getTournamentRepository();
+  await repository.updateProfile(
+    {
+      fullName: String(formData.get("fullName") ?? "").trim() || undefined,
+      username: String(formData.get("username") ?? "").trim() || undefined,
+      city: String(formData.get("city") ?? "").trim() || undefined,
+      level: String(formData.get("level") ?? "").trim() || undefined,
+      dominantHand: (formData.get("dominantHand") as "right" | "left" | "ambidextrous" | undefined) || undefined,
+    },
+    currentUser.id,
+  );
+  revalidatePath("/app/profile");
+  revalidatePath("/app");
+}
+
+export async function markNotificationReadAction(formData: FormData) {
+  const currentUser = await requireCurrentUser();
+  const repository = getTournamentRepository();
+  await repository.markNotificationRead(
+    String(formData.get("notificationId")),
+    currentUser.id,
+  );
+  revalidatePath("/app");
+}
+
+export async function markAllNotificationsReadAction() {
+  const currentUser = await requireCurrentUser();
+  const repository = getTournamentRepository();
+  await repository.markAllNotificationsRead(currentUser.id);
+  revalidatePath("/app");
 }

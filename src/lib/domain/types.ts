@@ -1,17 +1,44 @@
 export type AppRole = "organizer" | "player";
 export type TournamentMode = "fixed_pairs" | "individual_ranking";
-export type TournamentStatus = "draft" | "live" | "completed";
+export type TournamentStatus = "draft" | "published" | "in_progress" | "completed" | "cancelled";
+export type TournamentFormat = "league" | "playoff" | "league_playoff";
+export type PairMode = "fixed" | "variable";
+export type VariablePairStrategy = "manual" | "balanced_shuffle" | "auto_rotation";
 export type StageType = "groups" | "knockout";
-export type MatchStatus = "draft" | "scheduled" | "pending_review" | "validated";
-export type InvitationStatus = "pending" | "accepted" | "revoked";
+export type MatchStatus =
+  | "draft"
+  | "scheduled"
+  | "pending"
+  | "result_proposed"
+  | "in_validation"
+  | "in_dispute"
+  | "pending_review"
+  | "validated"
+  | "closed";
+export type InvitationStatus = "pending" | "accepted" | "revoked" | "expired" | "rejected";
 export type MembershipStatus = "invited" | "accepted";
+export type RegistrationStatus = "pending" | "confirmed" | "voluntary_withdrawal" | "expelled";
 export type ScoreSubmissionStatus = "pending_review" | "validated" | "rejected";
+export type ProposalStatus = "pending" | "accepted" | "rejected" | "overridden";
+export type ValidationDecision = "accept" | "reject";
 export type StandingsEntityType = "team" | "player";
+export type ValidationMode = "player" | "organizer";
+export type RoundStatus = "pending" | "in_progress" | "completed";
 
 export interface TournamentRules {
   bestOfSets: number;
   setsToWin: number;
   tiebreakAt: number;
+}
+
+export interface TournamentRulesRow {
+  id: string;
+  tournamentId: string;
+  pointsWin: number;
+  pointsLoss: number;
+  bestOfSets: number;
+  tieBreakRule: string[];
+  validationMode: ValidationMode;
 }
 
 export interface TournamentConfig {
@@ -27,7 +54,21 @@ export interface Profile {
   id: string;
   fullName: string;
   email: string;
+  username?: string | null;
+  city?: string | null;
+  level?: string | null;
+  dominantHand?: "right" | "left" | "ambidextrous" | null;
   avatarUrl?: string | null;
+}
+
+export interface Club {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string | null;
+  logoPath?: string | null;
+  createdBy: string;
+  createdAt: string;
 }
 
 export interface Tournament {
@@ -35,9 +76,12 @@ export interface Tournament {
   slug: string;
   name: string;
   status: TournamentStatus;
-  visibility: "private";
+  visibility: "private" | "public";
   mode: TournamentMode;
+  format: TournamentFormat;
+  pairMode: PairMode;
   organizerId: string;
+  clubId?: string | null;
   startsAt: string;
   endsAt: string;
   location?: string | null;
@@ -54,6 +98,15 @@ export interface TournamentMembership {
   joinedAt: string;
 }
 
+export interface TournamentRegistration {
+  id: string;
+  tournamentId: string;
+  userId: string;
+  status: RegistrationStatus;
+  registeredAt: string;
+  confirmedAt?: string | null;
+}
+
 export interface Invitation {
   id: string;
   tournamentId: string;
@@ -62,6 +115,7 @@ export interface Invitation {
   status: InvitationStatus;
   createdBy: string;
   createdAt: string;
+  expiresAt?: string | null;
   acceptedAt?: string | null;
   acceptedBy?: string | null;
 }
@@ -96,17 +150,29 @@ export interface TeamMember {
   userId: string;
 }
 
+export interface Round {
+  id: string;
+  tournamentId: string;
+  stageId: string;
+  roundNumber: number;
+  name?: string | null;
+  status: RoundStatus;
+  scheduledDate?: string | null;
+}
+
 export interface Match {
   id: string;
   tournamentId: string;
   stageId: string;
   groupId?: string | null;
+  roundId?: string | null;
   roundLabel?: string | null;
   bracketRound?: number | null;
   bracketPosition?: number | null;
   status: MatchStatus;
   scheduledAt?: string | null;
   court?: string | null;
+  courtName?: string | null;
   validatedSubmissionId?: string | null;
   createdAt: string;
   updatedAt: string;
@@ -139,6 +205,26 @@ export interface ScoreSubmission {
   reviewedAt?: string | null;
 }
 
+export interface MatchResultProposal {
+  id: string;
+  matchId: string;
+  proposedBy: string;
+  scoreJson: ScoreSet[];
+  winnerSide?: "home" | "away" | null;
+  notes?: string | null;
+  status: ProposalStatus;
+  createdAt: string;
+}
+
+export interface MatchResultValidation {
+  id: string;
+  proposalId: string;
+  validatorId: string;
+  decision: ValidationDecision;
+  reason?: string | null;
+  createdAt: string;
+}
+
 export interface StandingRow {
   id: string;
   tournamentId: string;
@@ -156,10 +242,33 @@ export interface StandingRow {
   gamesAgainst: number;
 }
 
+export interface Notification {
+  id: string;
+  userId: string;
+  type: string;
+  title: string;
+  body?: string | null;
+  data?: Record<string, unknown> | null;
+  read: boolean;
+  createdAt: string;
+}
+
+export interface AuditLogEntry {
+  id: string;
+  actorId?: string | null;
+  entityType: string;
+  entityId: string;
+  action: string;
+  payload?: Record<string, unknown> | null;
+  createdAt: string;
+}
+
 export interface MatchWithContext extends Match {
   sides: [MatchSide, MatchSide];
   latestSubmission?: ScoreSubmission | null;
   validatedSubmission?: ScoreSubmission | null;
+  proposals?: MatchResultProposal[];
+  validations?: MatchResultValidation[];
 }
 
 export interface GroupView {
@@ -187,6 +296,9 @@ export interface TournamentDetail {
   matches: MatchWithContext[];
   pendingSubmissions: ScoreSubmission[];
   standings: StandingRow[];
+  rounds: Round[];
+  rules?: TournamentRulesRow | null;
+  registrations: TournamentRegistration[];
 }
 
 export interface DashboardTournamentSummary {
@@ -194,12 +306,14 @@ export interface DashboardTournamentSummary {
   membership: TournamentMembership;
   pendingPlayerMatches: number;
   pendingReviewCount: number;
+  pendingValidations: number;
 }
 
 export interface DashboardSnapshot {
   currentUser: Profile;
   tournaments: DashboardTournamentSummary[];
   invitations: Invitation[];
+  notifications: Notification[];
 }
 
 export interface TournamentBundle {
@@ -215,6 +329,11 @@ export interface TournamentBundle {
   matchSides: MatchSide[];
   scoreSubmissions: ScoreSubmission[];
   standings?: StandingRow[];
+  rounds: Round[];
+  rules?: TournamentRulesRow | null;
+  registrations: TournamentRegistration[];
+  proposals: MatchResultProposal[];
+  proposalValidations: MatchResultValidation[];
 }
 
 export interface CreateTournamentInput {
@@ -223,14 +342,18 @@ export interface CreateTournamentInput {
   endsAt: string;
   location?: string;
   mode: TournamentMode;
+  format: TournamentFormat;
+  pairMode: PairMode;
   groupCount: number;
   qualifiersPerGroup: number;
   knockoutSize: number;
+  clubId?: string;
 }
 
 export interface CreateInvitationInput {
   tournamentId: string;
   invitedEmail?: string;
+  expiresAt?: string;
 }
 
 export interface CreateTeamInput {
@@ -266,6 +389,42 @@ export interface ReviewSubmissionInput {
   nextStatus: Extract<ScoreSubmissionStatus, "validated" | "rejected">;
 }
 
+export interface ProposeResultInput {
+  tournamentId: string;
+  matchId: string;
+  sets: ScoreSet[];
+  winnerSide: "home" | "away";
+  notes?: string;
+}
+
+export interface ValidateResultInput {
+  tournamentId: string;
+  proposalId: string;
+  decision: ValidationDecision;
+  reason?: string;
+}
+
+export interface ResolveDisputeInput {
+  tournamentId: string;
+  matchId: string;
+  sets: ScoreSet[];
+  winnerSide: "home" | "away";
+  reason: string;
+}
+
+export interface UpdateProfileInput {
+  username?: string;
+  fullName?: string;
+  city?: string;
+  level?: string;
+  dominantHand?: "right" | "left" | "ambidextrous";
+}
+
+export interface CreateClubInput {
+  name: string;
+  description?: string;
+}
+
 export interface IndividualKnockoutPair {
   label: string;
   playerIds: [string, string];
@@ -276,12 +435,22 @@ export interface ConfigureIndividualKnockoutInput {
   pairs: IndividualKnockoutPair[];
 }
 
+export interface AssignVariablePairsInput {
+  tournamentId: string;
+  roundId: string;
+  strategy: VariablePairStrategy;
+  manualPairs?: Array<{ playerIds: [string, string] }>;
+}
+
 export interface TournamentRepository {
   ensureProfile(profile: Profile): Promise<void>;
   getDashboard(userId: string): Promise<DashboardSnapshot>;
   getInvitationByToken(token: string): Promise<Invitation | null>;
   acceptInvitation(token: string, profile: Profile): Promise<string>;
+  rejectInvitation(invitationId: string, userId: string): Promise<void>;
   createTournament(input: CreateTournamentInput, organizer: Profile): Promise<Tournament>;
+  publishTournament(tournamentId: string, organizerId: string): Promise<void>;
+  cancelTournament(tournamentId: string, organizerId: string): Promise<void>;
   createInvitation(input: CreateInvitationInput, organizerId: string): Promise<Invitation>;
   getTournamentDetail(tournamentId: string, userId: string): Promise<TournamentDetail | null>;
   createTeam(input: CreateTeamInput, organizerId: string): Promise<void>;
@@ -298,4 +467,15 @@ export interface TournamentRepository {
     input: ConfigureIndividualKnockoutInput,
     organizerId: string,
   ): Promise<void>;
+  proposeResult(input: ProposeResultInput, userId: string): Promise<void>;
+  validateResult(input: ValidateResultInput, userId: string): Promise<void>;
+  resolveDispute(input: ResolveDisputeInput, organizerId: string): Promise<void>;
+  closeMatch(matchId: string, organizerId: string): Promise<void>;
+  updateProfile(input: UpdateProfileInput, userId: string): Promise<void>;
+  createClub(input: CreateClubInput, userId: string): Promise<Club>;
+  getNotifications(userId: string): Promise<Notification[]>;
+  markNotificationRead(notificationId: string, userId: string): Promise<void>;
+  markAllNotificationsRead(userId: string): Promise<void>;
+  expireInvitations(): Promise<number>;
+  assignVariablePairs(input: AssignVariablePairsInput, organizerId: string): Promise<void>;
 }

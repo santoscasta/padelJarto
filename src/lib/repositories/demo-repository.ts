@@ -7,14 +7,20 @@ import {
 } from "@/lib/domain/schedule";
 import { resolveMatchWinner } from "@/lib/domain/standings";
 import {
+  type AssignVariablePairsInput,
+  type Club,
   type ConfigureIndividualKnockoutInput,
+  type CreateClubInput,
   type CreateInvitationInput,
   type CreateTeamInput,
   type CreateTournamentInput,
   type DashboardSnapshot,
   type Invitation,
   type MatchSide,
+  type Notification,
   type Profile,
+  type ProposeResultInput,
+  type ResolveDisputeInput,
   type ReviewSubmissionInput,
   type ScoreSubmission,
   type Stage,
@@ -24,7 +30,9 @@ import {
   type TournamentRepository,
   type UpdateIndividualPairingInput,
   type UpdateMatchInput,
+  type UpdateProfileInput,
   type SubmitScoreInput,
+  type ValidateResultInput,
 } from "@/lib/domain/types";
 import { buildDashboardSnapshot, buildTournamentDetail } from "@/lib/domain/view-models";
 import { calculateStandings } from "@/lib/domain/standings";
@@ -58,6 +66,17 @@ function getTournamentBundleFromStore(store: DemoStore, tournamentId: string) {
       store.matches.some((match) => match.id === side.matchId && match.tournamentId === tournamentId),
     ),
     profiles: store.profiles,
+    proposals: (store.proposals ?? []).filter((proposal) =>
+      store.matches.some((match) => match.id === proposal.matchId && match.tournamentId === tournamentId),
+    ),
+    proposalValidations: (store.proposalValidations ?? []).filter((validation) =>
+      (store.proposals ?? []).some((proposal) =>
+        proposal.id === validation.proposalId &&
+        store.matches.some((match) => match.id === proposal.matchId && match.tournamentId === tournamentId),
+      ),
+    ),
+    registrations: (store.registrations ?? []).filter((reg) => reg.tournamentId === tournamentId),
+    rounds: (store.rounds ?? []).filter((round) => round.tournamentId === tournamentId),
     scoreSubmissions: store.scoreSubmissions.filter((submission) =>
       store.matches.some((match) => match.id === submission.matchId && match.tournamentId === tournamentId),
     ),
@@ -194,7 +213,7 @@ function getKnockoutStage(bundle: TournamentBundle) {
   return bundle.stages.find((stage) => stage.type === "knockout");
 }
 
-function seedTournamentBundle(tournament: Tournament, store = getDemoStore()) {
+function seedTournamentBundle(tournament: Tournament, store = getDemoStore()): TournamentBundle {
   return getTournamentBundleFromStore(store, tournament.id) ?? {
     groups: [],
     invitations: [],
@@ -202,6 +221,10 @@ function seedTournamentBundle(tournament: Tournament, store = getDemoStore()) {
     memberships: [],
     matchSides: [],
     profiles: store.profiles,
+    proposals: [],
+    proposalValidations: [],
+    registrations: [],
+    rounds: [],
     scoreSubmissions: [],
     stages: [],
     standings: [],
@@ -379,11 +402,13 @@ export class DemoTournamentRepository implements TournamentRepository {
       },
       createdAt: new Date().toISOString(),
       endsAt: input.endsAt,
+      format: input.format ?? "league_playoff",
       id: crypto.randomUUID(),
       location: input.location ?? null,
       mode: input.mode,
       name: input.name,
       organizerId: organizer.id,
+      pairMode: input.pairMode ?? "fixed",
       slug: `${slugify(input.name)}-${Math.random().toString(36).slice(2, 7)}`,
       startsAt: input.startsAt,
       status: "draft",
@@ -517,7 +542,7 @@ export class DemoTournamentRepository implements TournamentRepository {
       );
 
       const now = new Date().toISOString();
-      bundle.tournament.status = "live";
+      bundle.tournament.status = "in_progress";
 
       if (bundle.tournament.mode === "fixed_pairs") {
         invariant(bundle.teams.length >= bundle.tournament.config.groupCount, "Faltan parejas para generar grupos.");
@@ -808,5 +833,197 @@ export class DemoTournamentRepository implements TournamentRepository {
       store.matches.push(...knockout.matches);
       store.matchSides.push(...knockout.matchSides);
     });
+  }
+
+  async rejectInvitation(invitationId: string, _userId: string) {
+    mutateDemoStore((store) => {
+      const invitation = store.invitations.find((inv) => inv.id === invitationId);
+      invariant(invitation, "Invitación no encontrada.");
+      invariant(invitation.status === "pending", "La invitación ya no está pendiente.");
+      invitation.status = "rejected";
+    });
+  }
+
+  async publishTournament(tournamentId: string, organizerId: string) {
+    mutateDemoStore((store) => {
+      const bundle = getTournamentBundleFromStore(store, tournamentId);
+      invariant(bundle, "Torneo no encontrado.");
+      ensureOrganizer(bundle, organizerId);
+      invariant(bundle.tournament.status === "draft", "Solo se puede publicar un borrador.");
+      const tournament = store.tournaments.find((t) => t.id === tournamentId)!;
+      tournament.status = "published";
+    });
+  }
+
+  async cancelTournament(tournamentId: string, organizerId: string) {
+    mutateDemoStore((store) => {
+      const bundle = getTournamentBundleFromStore(store, tournamentId);
+      invariant(bundle, "Torneo no encontrado.");
+      ensureOrganizer(bundle, organizerId);
+      const tournament = store.tournaments.find((t) => t.id === tournamentId)!;
+      tournament.status = "cancelled";
+    });
+  }
+
+  async proposeResult(input: ProposeResultInput, userId: string) {
+    mutateDemoStore((store) => {
+      const bundle = getTournamentBundleFromStore(store, input.tournamentId);
+      invariant(bundle, "Torneo no encontrado.");
+      ensureAcceptedMembership(bundle, userId);
+      const match = ensureMatchBelongsToTournament(bundle, input.matchId);
+      invariant(
+        ["scheduled", "pending"].includes(match.status),
+        "El partido no está en un estado válido para proponer resultado.",
+      );
+
+      const proposal = {
+        id: crypto.randomUUID(),
+        matchId: input.matchId,
+        proposedBy: userId,
+        scoreJson: input.sets,
+        winnerSide: input.winnerSide,
+        notes: input.notes ?? null,
+        status: "pending" as const,
+        createdAt: new Date().toISOString(),
+      };
+      store.proposals.push(proposal);
+
+      const storeMatch = store.matches.find((m) => m.id === input.matchId)!;
+      storeMatch.status = "result_proposed";
+      storeMatch.updatedAt = new Date().toISOString();
+    });
+  }
+
+  async validateResult(input: ValidateResultInput, userId: string) {
+    mutateDemoStore((store) => {
+      const proposal = store.proposals.find((p) => p.id === input.proposalId);
+      invariant(proposal, "Propuesta no encontrada.");
+      invariant(proposal.proposedBy !== userId, "No puedes validar tu propia propuesta.");
+
+      const validation = {
+        id: crypto.randomUUID(),
+        proposalId: input.proposalId,
+        validatorId: userId,
+        decision: input.decision,
+        reason: input.reason ?? null,
+        createdAt: new Date().toISOString(),
+      };
+      store.proposalValidations.push(validation);
+
+      const storeMatch = store.matches.find((m) => m.id === proposal.matchId)!;
+
+      if (input.decision === "accept") {
+        proposal.status = "accepted";
+        storeMatch.status = "validated";
+      } else {
+        proposal.status = "rejected";
+        storeMatch.status = "in_dispute";
+      }
+      storeMatch.updatedAt = new Date().toISOString();
+    });
+  }
+
+  async resolveDispute(input: ResolveDisputeInput, organizerId: string) {
+    mutateDemoStore((store) => {
+      const bundle = getTournamentBundleFromStore(store, input.tournamentId);
+      invariant(bundle, "Torneo no encontrado.");
+      ensureOrganizer(bundle, organizerId);
+      const storeMatch = store.matches.find((m) => m.id === input.matchId)!;
+      invariant(storeMatch.status === "in_dispute", "El partido no está en disputa.");
+
+      // Override with organizer's result
+      const overrideProposal = {
+        id: crypto.randomUUID(),
+        matchId: input.matchId,
+        proposedBy: organizerId,
+        scoreJson: input.sets,
+        winnerSide: input.winnerSide,
+        notes: input.reason,
+        status: "overridden" as const,
+        createdAt: new Date().toISOString(),
+      };
+      store.proposals.push(overrideProposal);
+
+      storeMatch.status = "validated";
+      storeMatch.updatedAt = new Date().toISOString();
+    });
+  }
+
+  async closeMatch(matchId: string, _organizerId: string) {
+    mutateDemoStore((store) => {
+      const match = store.matches.find((m) => m.id === matchId);
+      invariant(match, "Partido no encontrado.");
+      invariant(match.status === "validated", "Solo se puede cerrar un partido validado.");
+      match.status = "closed";
+      match.updatedAt = new Date().toISOString();
+    });
+  }
+
+  async updateProfile(input: UpdateProfileInput, userId: string) {
+    mutateDemoStore((store) => {
+      const profile = store.profiles.find((p) => p.id === userId);
+      invariant(profile, "Perfil no encontrado.");
+      if (input.fullName) profile.fullName = input.fullName;
+      if (input.username !== undefined) profile.username = input.username;
+      if (input.city !== undefined) profile.city = input.city;
+      if (input.level !== undefined) profile.level = input.level;
+      if (input.dominantHand !== undefined) profile.dominantHand = input.dominantHand;
+    });
+  }
+
+  async createClub(input: CreateClubInput, userId: string): Promise<Club> {
+    const club: Club = {
+      id: crypto.randomUUID(),
+      name: input.name,
+      slug: `${slugify(input.name)}-${Math.random().toString(36).slice(2, 7)}`,
+      description: input.description ?? null,
+      logoPath: null,
+      createdBy: userId,
+      createdAt: new Date().toISOString(),
+    };
+    return club;
+  }
+
+  async getNotifications(userId: string): Promise<Notification[]> {
+    const store = getDemoStore();
+    return (store.notifications ?? [])
+      .filter((n) => n.userId === userId)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  }
+
+  async markNotificationRead(notificationId: string, userId: string) {
+    mutateDemoStore((store) => {
+      const notification = (store.notifications ?? []).find(
+        (n) => n.id === notificationId && n.userId === userId,
+      );
+      if (notification) notification.read = true;
+    });
+  }
+
+  async markAllNotificationsRead(userId: string) {
+    mutateDemoStore((store) => {
+      for (const notification of store.notifications ?? []) {
+        if (notification.userId === userId) notification.read = true;
+      }
+    });
+  }
+
+  async expireInvitations(): Promise<number> {
+    let count = 0;
+    mutateDemoStore((store) => {
+      const now = new Date().toISOString();
+      for (const invitation of store.invitations) {
+        if (invitation.status === "pending" && invitation.expiresAt && invitation.expiresAt < now) {
+          invitation.status = "expired";
+          count++;
+        }
+      }
+    });
+    return count;
+  }
+
+  async assignVariablePairs(_input: AssignVariablePairsInput, _organizerId: string) {
+    // Variable pair assignment is a complex operation - stub for demo mode
+    throw new Error("Variable pair assignment is not implemented in demo mode.");
   }
 }

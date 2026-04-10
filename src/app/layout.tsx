@@ -24,26 +24,33 @@ const appUrl = getAppUrl();
 export const metadata: Metadata = {
   metadataBase: new URL(appUrl),
   title: {
-    default: "PadelJarto",
-    template: "%s | PadelJarto",
+    default: "PadelFlow",
+    template: "%s | PadelFlow",
   },
-  description: "Gestiona torneos privados de pádel con grupos, ranking y cuadro final.",
-  applicationName: "PadelJarto",
+  description: "Gestión de torneos de pádel con liguilla, playoffs, invitaciones y parejas.",
+  applicationName: "PadelFlow",
+  manifest: "/manifest.json",
+  themeColor: "#f97316",
   alternates: {
     canonical: "/",
   },
   openGraph: {
-    title: "PadelJarto",
-    description: "Gestiona torneos privados de pádel con grupos, ranking y cuadro final.",
+    title: "PadelFlow",
+    description: "Gestión de torneos de pádel con liguilla, playoffs, invitaciones y parejas.",
     locale: "es_ES",
-    siteName: "PadelJarto",
+    siteName: "PadelFlow",
     type: "website",
     url: "/",
   },
   twitter: {
     card: "summary_large_image",
-    title: "PadelJarto",
-    description: "Gestiona torneos privados de pádel con grupos, ranking y cuadro final.",
+    title: "PadelFlow",
+    description: "Gestión de torneos de pádel con liguilla, playoffs, invitaciones y parejas.",
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "PadelFlow",
   },
 };
 

@@ -7,14 +7,20 @@ import {
 } from "@/lib/domain/schedule";
 import { calculateStandings, resolveMatchWinner } from "@/lib/domain/standings";
 import type {
+  AssignVariablePairsInput,
+  Club,
   ConfigureIndividualKnockoutInput,
+  CreateClubInput,
   CreateInvitationInput,
   CreateTeamInput,
   CreateTournamentInput,
   DashboardSnapshot,
   Invitation,
   MatchSide,
+  Notification,
   Profile,
+  ProposeResultInput,
+  ResolveDisputeInput,
   ReviewSubmissionInput,
   ScoreSubmission,
   Stage,
@@ -24,7 +30,9 @@ import type {
   TournamentRepository,
   UpdateIndividualPairingInput,
   UpdateMatchInput,
+  UpdateProfileInput,
   SubmitScoreInput,
+  ValidateResultInput,
 } from "@/lib/domain/types";
 import { buildDashboardSnapshot, buildTournamentDetail } from "@/lib/domain/view-models";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
@@ -109,22 +117,29 @@ function validateScoreSets(sets: SubmitScoreInput["sets"]) {
 function mapProfile(row: Record<string, unknown>): Profile {
   return {
     avatarUrl: (row.avatar_url as string | null | undefined) ?? null,
+    city: (row.city as string | null | undefined) ?? null,
+    dominantHand: (row.dominant_hand as Profile["dominantHand"]) ?? null,
     email: String(row.email),
     fullName: String(row.full_name),
     id: String(row.id),
+    level: (row.level as string | null | undefined) ?? null,
+    username: (row.username as string | null | undefined) ?? null,
   };
 }
 
 function mapTournament(row: Record<string, unknown>): Tournament {
   return {
+    clubId: (row.club_id as string | null | undefined) ?? null,
     config: row.config as Tournament["config"],
     createdAt: String(row.created_at),
     endsAt: String(row.ends_at),
+    format: (row.format as Tournament["format"]) ?? "league_playoff",
     id: String(row.id),
     location: (row.location as string | null | undefined) ?? null,
     mode: row.mode as Tournament["mode"],
     name: String(row.name),
     organizerId: String(row.organizer_id),
+    pairMode: (row.pair_mode as Tournament["pairMode"]) ?? "fixed",
     slug: String(row.slug),
     startsAt: String(row.starts_at),
     status: row.status as Tournament["status"],
@@ -464,6 +479,10 @@ async function loadBundle(
     memberships: (membershipsResult.data ?? []).map(mapMembership),
     matchSides: (matchSidesResult.data ?? []).map(mapMatchSide),
     profiles: (profilesResult.data ?? []).map(mapProfile),
+    proposals: [],
+    proposalValidations: [],
+    registrations: [],
+    rounds: [],
     scoreSubmissions: (submissionsResult.data ?? []).map(mapSubmission),
     stages: (stagesResult.data ?? []).map(mapStage),
     standings: (standingsResult.data ?? []).map(mapStanding),
@@ -635,10 +654,12 @@ export class SupabaseTournamentRepository implements TournamentRepository {
         scheduleGeneration: "automatic_with_editing",
       },
       ends_at: input.endsAt,
+      format: input.format ?? "league_playoff",
       location: input.location ?? null,
       mode: input.mode,
       name: input.name,
       organizer_id: organizer.id,
+      pair_mode: input.pairMode ?? "fixed",
       slug: `${slugify(input.name)}-${Math.random().toString(36).slice(2, 7)}`,
       starts_at: input.startsAt,
       status: "draft",
@@ -913,7 +934,7 @@ export class SupabaseTournamentRepository implements TournamentRepository {
       throw sidesError;
     }
 
-    await client.from("tournaments").update({ status: "live" }).eq("id", tournamentId);
+    await client.from("tournaments").update({ status: "in_progress" }).eq("id", tournamentId);
   }
 
   async updateMatch(input: UpdateMatchInput, organizerId: string) {
@@ -1219,5 +1240,236 @@ export class SupabaseTournamentRepository implements TournamentRepository {
     if (sidesError) {
       throw sidesError;
     }
+  }
+
+  async rejectInvitation(invitationId: string, _userId: string) {
+    const client = this.client();
+    const { error } = await client
+      .from("invitations")
+      .update({ status: "rejected" })
+      .eq("id", invitationId)
+      .eq("status", "pending");
+    if (error) throw error;
+  }
+
+  async publishTournament(tournamentId: string, organizerId: string) {
+    const client = this.client();
+    const { error } = await client
+      .from("tournaments")
+      .update({ status: "published" })
+      .eq("id", tournamentId)
+      .eq("organizer_id", organizerId)
+      .eq("status", "draft");
+    if (error) throw error;
+  }
+
+  async cancelTournament(tournamentId: string, organizerId: string) {
+    const client = this.client();
+    const { error } = await client
+      .from("tournaments")
+      .update({ status: "cancelled" })
+      .eq("id", tournamentId)
+      .eq("organizer_id", organizerId);
+    if (error) throw error;
+  }
+
+  async proposeResult(input: ProposeResultInput, userId: string) {
+    const client = this.client();
+
+    const { error: proposalError } = await client.from("match_result_proposals").insert({
+      match_id: input.matchId,
+      proposed_by: userId,
+      score_json: input.sets,
+      winner_side: input.winnerSide,
+      notes: input.notes ?? null,
+      status: "pending",
+    });
+    if (proposalError) throw proposalError;
+
+    const { error: matchError } = await client
+      .from("matches")
+      .update({ status: "result_proposed", updated_at: new Date().toISOString() })
+      .eq("id", input.matchId);
+    if (matchError) throw matchError;
+  }
+
+  async validateResult(input: ValidateResultInput, userId: string) {
+    const client = this.client();
+
+    const { error: validationError } = await client.from("match_result_validations").insert({
+      proposal_id: input.proposalId,
+      validator_id: userId,
+      decision: input.decision,
+      reason: input.reason ?? null,
+    });
+    if (validationError) throw validationError;
+
+    // Get the proposal to find the match
+    const { data: proposal, error: proposalFetchError } = await client
+      .from("match_result_proposals")
+      .select("id, match_id")
+      .eq("id", input.proposalId)
+      .single();
+    if (proposalFetchError) throw proposalFetchError;
+
+    if (input.decision === "accept") {
+      await client
+        .from("match_result_proposals")
+        .update({ status: "accepted" })
+        .eq("id", input.proposalId);
+      await client
+        .from("matches")
+        .update({ status: "validated", updated_at: new Date().toISOString() })
+        .eq("id", proposal.match_id);
+    } else {
+      await client
+        .from("match_result_proposals")
+        .update({ status: "rejected" })
+        .eq("id", input.proposalId);
+      await client
+        .from("matches")
+        .update({ status: "in_dispute", updated_at: new Date().toISOString() })
+        .eq("id", proposal.match_id);
+    }
+  }
+
+  async resolveDispute(input: ResolveDisputeInput, organizerId: string) {
+    const client = this.client();
+
+    // Insert override proposal
+    const { error: proposalError } = await client.from("match_result_proposals").insert({
+      match_id: input.matchId,
+      proposed_by: organizerId,
+      score_json: input.sets,
+      winner_side: input.winnerSide,
+      notes: input.reason,
+      status: "overridden",
+    });
+    if (proposalError) throw proposalError;
+
+    // Update match to validated
+    const { error: matchError } = await client
+      .from("matches")
+      .update({ status: "validated", updated_at: new Date().toISOString() })
+      .eq("id", input.matchId);
+    if (matchError) throw matchError;
+
+    // Audit log
+    const admin = createSupabaseAdminClient();
+    if (admin) {
+      await admin.from("audit_log").insert({
+        actor_id: organizerId,
+        entity_type: "match",
+        entity_id: input.matchId,
+        action: "resolve_dispute",
+        payload: { sets: input.sets, winnerSide: input.winnerSide, reason: input.reason },
+      });
+    }
+  }
+
+  async closeMatch(matchId: string, _organizerId: string) {
+    const client = this.client();
+    const { error } = await client
+      .from("matches")
+      .update({ status: "closed", updated_at: new Date().toISOString() })
+      .eq("id", matchId)
+      .eq("status", "validated");
+    if (error) throw error;
+  }
+
+  async updateProfile(input: UpdateProfileInput, userId: string) {
+    const client = this.client();
+    const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
+    if (input.fullName !== undefined) updates.full_name = input.fullName;
+    if (input.username !== undefined) updates.username = input.username;
+    if (input.city !== undefined) updates.city = input.city;
+    if (input.level !== undefined) updates.level = input.level;
+    if (input.dominantHand !== undefined) updates.dominant_hand = input.dominantHand;
+
+    const { error } = await client.from("profiles").update(updates).eq("id", userId);
+    if (error) throw error;
+  }
+
+  async createClub(input: CreateClubInput, userId: string): Promise<Club> {
+    const client = this.client();
+    const slug = `${slugify(input.name)}-${Math.random().toString(36).slice(2, 7)}`;
+    const { data, error } = await client
+      .from("clubs")
+      .insert({
+        name: input.name,
+        slug,
+        description: input.description ?? null,
+        created_by: userId,
+      })
+      .select("*")
+      .single();
+    if (error) throw error;
+    return {
+      id: String(data.id),
+      name: String(data.name),
+      slug: String(data.slug),
+      description: (data.description as string | null) ?? null,
+      logoPath: null,
+      createdBy: String(data.created_by),
+      createdAt: String(data.created_at),
+    };
+  }
+
+  async getNotifications(userId: string): Promise<Notification[]> {
+    const client = this.client();
+    const { data, error } = await client
+      .from("notifications")
+      .select("*")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(50);
+    if (error) throw error;
+    return (data ?? []).map((row) => ({
+      id: String(row.id),
+      userId: String(row.user_id),
+      type: String(row.type),
+      title: String(row.title),
+      body: (row.body as string | null) ?? null,
+      data: (row.data as Record<string, unknown> | null) ?? null,
+      read: Boolean(row.read),
+      createdAt: String(row.created_at),
+    }));
+  }
+
+  async markNotificationRead(notificationId: string, userId: string) {
+    const client = this.client();
+    const { error } = await client
+      .from("notifications")
+      .update({ read: true })
+      .eq("id", notificationId)
+      .eq("user_id", userId);
+    if (error) throw error;
+  }
+
+  async markAllNotificationsRead(userId: string) {
+    const client = this.client();
+    const { error } = await client
+      .from("notifications")
+      .update({ read: true })
+      .eq("user_id", userId)
+      .eq("read", false);
+    if (error) throw error;
+  }
+
+  async expireInvitations(): Promise<number> {
+    const admin = createSupabaseAdminClient();
+    if (!admin) return 0;
+    const { data, error } = await admin
+      .from("invitations")
+      .update({ status: "expired" })
+      .eq("status", "pending")
+      .lt("expires_at", new Date().toISOString())
+      .select("id");
+    if (error) throw error;
+    return data?.length ?? 0;
+  }
+
+  async assignVariablePairs(_input: AssignVariablePairsInput, _organizerId: string) {
+    throw new Error("Variable pair assignment via Supabase is not yet implemented.");
   }
 }

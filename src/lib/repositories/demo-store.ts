@@ -3,8 +3,12 @@ import {
   type Group,
   type Invitation,
   type Match,
+  type MatchResultProposal,
+  type MatchResultValidation,
   type MatchSide,
+  type Notification,
   type Profile,
+  type Round,
   type ScoreSubmission,
   type Stage,
   type StandingRow,
@@ -12,6 +16,7 @@ import {
   type TeamMember,
   type Tournament,
   type TournamentMembership,
+  type TournamentRegistration,
 } from "@/lib/domain/types";
 
 export interface DemoStore {
@@ -20,7 +25,12 @@ export interface DemoStore {
   matches: Match[];
   memberships: TournamentMembership[];
   matchSides: MatchSide[];
+  notifications: Notification[];
   profiles: Profile[];
+  proposals: MatchResultProposal[];
+  proposalValidations: MatchResultValidation[];
+  registrations: TournamentRegistration[];
+  rounds: Round[];
   scoreSubmissions: ScoreSubmission[];
   stages: Stage[];
   standings: StandingRow[];
@@ -29,7 +39,7 @@ export interface DemoStore {
   tournaments: Tournament[];
 }
 
-let store = createDemoSeed();
+let store: DemoStore = { ...createDemoSeed(), notifications: [] };
 
 export function getDemoStore() {
   return structuredClone(store) as DemoStore;
@@ -47,5 +57,5 @@ export function mutateDemoStore(mutator: (draft: DemoStore) => void) {
 }
 
 export function resetDemoStore() {
-  replaceDemoStore(createDemoSeed());
+  replaceDemoStore({ ...createDemoSeed(), notifications: [] });
 }

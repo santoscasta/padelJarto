@@ -4,8 +4,11 @@ import {
   type GroupView,
   type KnockoutRoundView,
   type Match,
+  type MatchResultProposal,
+  type MatchResultValidation,
   type MatchSide,
   type MatchWithContext,
+  type Notification,
   type Profile,
   type ScoreSubmission,
   type TournamentBundle,
@@ -43,9 +46,13 @@ function buildMatchContext(
   matches: Match[],
   sides: MatchSide[],
   submissions: ScoreSubmission[],
+  proposals: MatchResultProposal[] = [],
+  proposalValidations: MatchResultValidation[] = [],
 ) {
   const sidesByMatch = new Map<string, MatchSide[]>();
   const submissionsByMatch = new Map<string, ScoreSubmission[]>();
+  const proposalsByMatch = new Map<string, MatchResultProposal[]>();
+  const validationsByProposal = new Map<string, MatchResultValidation[]>();
 
   for (const side of sides) {
     const bucket = sidesByMatch.get(side.matchId) ?? [];
@@ -57,6 +64,18 @@ function buildMatchContext(
     const bucket = submissionsByMatch.get(submission.matchId) ?? [];
     bucket.push(submission);
     submissionsByMatch.set(submission.matchId, bucket);
+  }
+
+  for (const proposal of proposals) {
+    const bucket = proposalsByMatch.get(proposal.matchId) ?? [];
+    bucket.push(proposal);
+    proposalsByMatch.set(proposal.matchId, bucket);
+  }
+
+  for (const validation of proposalValidations) {
+    const bucket = validationsByProposal.get(validation.proposalId) ?? [];
+    bucket.push(validation);
+    validationsByProposal.set(validation.proposalId, bucket);
   }
 
   return sortMatches(matches).flatMap((match) => {
@@ -74,12 +93,21 @@ function buildMatchContext(
     const validatedSubmission =
       matchSubmissions.find((submission) => submission.status === "validated") ?? null;
 
+    const matchProposals = (proposalsByMatch.get(match.id) ?? []).sort(
+      (left, right) => right.createdAt.localeCompare(left.createdAt),
+    );
+    const matchValidations = matchProposals.flatMap(
+      (proposal) => validationsByProposal.get(proposal.id) ?? [],
+    );
+
     return [
       {
         ...match,
         latestSubmission: matchSubmissions[0] ?? null,
+        proposals: matchProposals,
         sides: [matchSides[0], matchSides[1]] as [MatchSide, MatchSide],
         validatedSubmission,
+        validations: matchValidations,
       },
     ] satisfies MatchWithContext[];
   });
@@ -114,7 +142,13 @@ export function buildTournamentDetail(bundle: TournamentBundle, userId: string):
     return null;
   }
 
-  const matchViews = buildMatchContext(bundle.matches, bundle.matchSides, bundle.scoreSubmissions);
+  const matchViews = buildMatchContext(
+    bundle.matches,
+    bundle.matchSides,
+    bundle.scoreSubmissions,
+    bundle.proposals,
+    bundle.proposalValidations,
+  );
   const groups: GroupView[] = bundle.groups.map((group) => {
     const matches = matchViews.filter((match) => match.groupId === group.id);
     const standings =
@@ -167,6 +201,9 @@ export function buildTournamentDetail(bundle: TournamentBundle, userId: string):
     ),
     membership,
     pendingSubmissions,
+    registrations: bundle.registrations,
+    rounds: bundle.rounds,
+    rules: bundle.rules,
     stages: bundle.stages,
     standings,
     teamMembers: bundle.teamMembers,
@@ -183,6 +220,7 @@ export function buildDashboardSnapshot(
   bundles: TournamentBundle[],
   profiles: Profile[],
   userId: string,
+  notifications: Notification[] = [],
 ): DashboardSnapshot {
   const currentUser = profiles.find((profile) => profile.id === userId);
   if (!currentUser) {
@@ -196,16 +234,29 @@ export function buildDashboardSnapshot(
         return null;
       }
 
+      const pendingValidations = detail.matches.filter(
+        (match) =>
+          (match.status === "result_proposed" || match.status === "in_validation") &&
+          isUserParticipant(match, userId) &&
+          match.proposals?.some(
+            (proposal) =>
+              proposal.status === "pending" &&
+              proposal.proposedBy !== userId,
+          ),
+      ).length;
+
       return {
         membership: detail.membership,
         pendingPlayerMatches: detail.matches.filter(
           (match) =>
             isUserParticipant(match, userId) &&
             match.status !== "validated" &&
+            match.status !== "closed" &&
             match.status !== "pending_review",
         ).length,
         pendingReviewCount:
           detail.membership.role === "organizer" ? detail.pendingSubmissions.length : 0,
+        pendingValidations,
         tournament: detail.tournament,
       } satisfies DashboardTournamentSummary;
     })
@@ -224,6 +275,7 @@ export function buildDashboardSnapshot(
   return {
     currentUser,
     invitations,
+    notifications,
     tournaments: tournamentSummaries,
   };
 }
