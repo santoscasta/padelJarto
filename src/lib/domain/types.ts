@@ -26,9 +26,16 @@ export type ValidationMode = "player" | "organizer";
 export type RoundStatus = "pending" | "in_progress" | "completed";
 
 export interface TournamentRules {
+  id?: string;
+  tournamentId?: string;
   bestOfSets: number;
   setsToWin: number;
   tiebreakAt: number;
+  pointsWin?: number;
+  pointsLoss?: number;
+  pointsWalkover?: number;
+  tieBreakRule?: string;
+  validationMode?: 'rival' | 'organizer' | 'auto';
 }
 
 export interface TournamentRulesRow {
@@ -59,6 +66,10 @@ export interface Profile {
   level?: string | null;
   dominantHand?: "right" | "left" | "ambidextrous" | null;
   avatarUrl?: string | null;
+  avatarPath?: string;
+  club?: string;
+  bio?: string;
+  createdAt?: string;
 }
 
 export interface Club {
@@ -118,6 +129,9 @@ export interface Invitation {
   expiresAt?: string | null;
   acceptedAt?: string | null;
   acceptedBy?: string | null;
+  message?: string;
+  // Joined data
+  tournament?: { name: string; format: string; status: TournamentStatus };
 }
 
 export interface Stage {

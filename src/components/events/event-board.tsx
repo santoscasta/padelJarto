@@ -24,6 +24,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { QrShare } from "@/components/qr-share";
 
 function playerName(players: EventPlayerRow[], id: string | null): string {
   if (!id) return "—";
@@ -100,7 +101,11 @@ export function EventBoard({ initialBundle }: Readonly<{ initialBundle: EventBun
             </p>
           </div>
 
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <QrShare
+              url={`/t/${initialBundle.event.slug}`}
+              title={initialBundle.event.name}
+            />
             <Button asChild variant="secondary">
               <Link href={`/t/${initialBundle.event.slug}`} target="_blank">
                 Abrir vista pública

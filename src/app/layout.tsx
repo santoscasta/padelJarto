@@ -1,6 +1,7 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque, IBM_Plex_Mono, Manrope } from "next/font/google";
 import { getAppUrl } from "@/lib/env";
+import { PwaRegister } from "@/components/pwa-register";
 import "./globals.css";
 
 const manrope = Manrope({
@@ -21,6 +22,10 @@ const mono = IBM_Plex_Mono({
 
 const appUrl = getAppUrl();
 
+export const viewport: Viewport = {
+  themeColor: "#f97316",
+};
+
 export const metadata: Metadata = {
   metadataBase: new URL(appUrl),
   title: {
@@ -30,7 +35,6 @@ export const metadata: Metadata = {
   description: "Gestión de torneos de pádel con liguilla, playoffs, invitaciones y parejas.",
   applicationName: "PadelFlow",
   manifest: "/manifest.json",
-  themeColor: "#f97316",
   alternates: {
     canonical: "/",
   },
@@ -64,7 +68,14 @@ export default function RootLayout({
       lang="es"
       className={`${manrope.variable} ${bricolage.variable} ${mono.variable} h-full antialiased`}
     >
-      <body className="min-h-full bg-[#110d0c] text-[#fff7ed]">{children}</body>
+      <head>
+        <meta name="mobile-web-app-capable" content="yes" />
+        <link rel="apple-touch-icon" href="/icon.svg" />
+      </head>
+      <body className="min-h-full bg-[#110d0c] text-[#fff7ed]">
+        {children}
+        <PwaRegister />
+      </body>
     </html>
   );
 }

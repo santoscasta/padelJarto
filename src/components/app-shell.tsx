@@ -1,13 +1,14 @@
 import Link from "next/link";
 import { CalendarRange, LogOut, Mail, Plus, Trophy } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { BottomNav } from "@/components/bottom-nav";
 import { Button } from "@/components/ui/button";
 import { NotificationBell } from "@/components/notifications/notification-bell";
 import { signOutAction } from "@/app/auth-actions";
 import { initialsFromName } from "@/lib/utils";
 import type { Notification, Profile } from "@/lib/domain/types";
 
-export function AppShell({
+export async function AppShell({
   children,
   currentUser,
   notifications = [],
@@ -18,7 +19,7 @@ export function AppShell({
 }>) {
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(249,115,22,0.25),_transparent_32%),linear-gradient(180deg,#0f0c0b_0%,#191311_48%,#120f0e_100%)] text-[#fff7ed]">
-      <div className="mx-auto flex min-h-screen max-w-7xl flex-col px-4 py-4 sm:px-6">
+      <div className="mx-auto flex min-h-screen max-w-7xl flex-col px-4 pb-20 pt-4 sm:px-6 sm:pb-0">
         <header className="mb-6 rounded-[30px] border border-white/10 bg-black/25 px-5 py-4 backdrop-blur sm:px-7">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex items-center gap-4">
@@ -37,7 +38,7 @@ export function AppShell({
             </div>
 
             <nav className="flex flex-col gap-3 sm:flex-row sm:items-center">
-              <div className="flex items-center gap-2">
+              <div className="hidden items-center gap-2 sm:flex">
                 <Button asChild variant="ghost">
                   <Link href="/app">
                     <CalendarRange className="mr-2 size-4" />
@@ -91,6 +92,8 @@ export function AppShell({
             <span>Liguilla + Playoff + Parejas variables</span>
           </div>
         </footer>
+
+        <BottomNav />
       </div>
     </div>
   );

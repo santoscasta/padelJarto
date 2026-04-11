@@ -9,6 +9,7 @@ import type {
   EventMatchRow,
   EventPlayerRow,
 } from "@/lib/repositories/event-repository";
+import { QrShare } from "@/components/qr-share";
 
 function playerName(players: EventPlayerRow[], id: string | null): string {
   if (!id) return "—";
@@ -96,8 +97,14 @@ export function PublicEventView({
               {initialBundle.event.name}
             </h1>
           </div>
-          <div className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs uppercase tracking-[0.2em] text-[#fdba74]">
-            Marcador en vivo
+          <div className="flex items-center gap-3">
+            <QrShare
+              url={`/t/${initialBundle.event.slug}`}
+              title={initialBundle.event.name}
+            />
+            <div className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs uppercase tracking-[0.2em] text-[#fdba74]">
+              Marcador en vivo
+            </div>
           </div>
         </header>
 

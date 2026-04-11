@@ -3,6 +3,10 @@ import { CheckCircle2, Clock3, Flag, Link2, MessageCircle, ShieldCheck, Users } 
 import { KnockoutBracket } from "@/components/tournament/knockout-bracket";
 import { RealtimeRefresher } from "@/components/tournament/realtime-refresher";
 import { StandingsTable } from "@/components/tournament/standings-table";
+import { TournamentTabs } from "@/components/tournament/tournament-tabs";
+import { TournamentSummary } from "@/components/tournament/tournament-summary";
+import { TournamentPlayers } from "@/components/tournament/tournament-players";
+import { TournamentRulesView } from "@/components/tournament/tournament-rules-view";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -87,47 +91,34 @@ export default async function TournamentDetailPage({
   const shareInvitation =
     pendingInvitations.find((invitation) => invitation.token === resolvedSearchParams.share) ?? null;
 
-  return (
+  const allMatches = detail.matches;
+  const completedMatches = allMatches.filter((m) => m.validatedSubmission).length;
+
+  const playersList = detail.members.map((member) => ({
+    id: member.id,
+    name: member.fullName,
+    role: member.id === detail.tournament.organizerId ? "organizer" : "player",
+  }));
+
+  /* ── Summary tab content ───────────────────────────────────────────── */
+  const summaryContent = (
     <div className="space-y-6">
-      <RealtimeRefresher tournamentId={detail.tournament.id} />
-      <Card className="surface-grid overflow-hidden">
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <div className="flex flex-wrap items-center gap-3">
-              <h1 className="font-[family:var(--font-display)] text-4xl tracking-tight sm:text-5xl">
-                {detail.tournament.name}
-              </h1>
-              <Badge>{detail.membership.role === "organizer" ? "Organizer" : "Player"}</Badge>
-              <Badge className="border-white/10 bg-white/5 text-[#fff7ed]">
-                {detail.tournament.mode === "fixed_pairs" ? "Parejas fijas" : "Ranking individual"}
-              </Badge>
-            </div>
-            <p className="mt-4 text-sm leading-7 text-[#d6d3d1]">
-              {formatDateLabel(detail.tournament.startsAt)} a {formatDateLabel(detail.tournament.endsAt)} ·{" "}
-              {detail.tournament.location}
-            </p>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-3">
-            <div className="rounded-[24px] border border-white/10 bg-black/20 p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-[#fb923c]">Jugadores</p>
-              <p className="mt-2 text-3xl font-semibold">{playerOptions.length}</p>
-            </div>
-            <div className="rounded-[24px] border border-white/10 bg-black/20 p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-[#fb923c]">Pendientes</p>
-              <p className="mt-2 text-3xl font-semibold">{detail.pendingSubmissions.length}</p>
-            </div>
-            <div className="rounded-[24px] border border-white/10 bg-black/20 p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-[#fb923c]">Estado</p>
-              <p className="mt-2 text-3xl font-semibold capitalize">{detail.tournament.status}</p>
-            </div>
-          </div>
-        </div>
-      </Card>
+      <TournamentSummary
+        tournament={{
+          name: detail.tournament.name,
+          status: detail.tournament.status,
+          mode: detail.tournament.mode,
+          createdAt: detail.tournament.createdAt,
+        }}
+        playerCount={playerOptions.length}
+        matchCount={allMatches.length}
+        completedMatches={completedMatches}
+      />
 
       <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
         <div className="space-y-6">
           <Card>
-            <p className="text-xs uppercase tracking-[0.2em] text-[#fdba74]">Participación</p>
+            <p className="text-xs uppercase tracking-[0.2em] text-[#fdba74]">Participacion</p>
             <div className="mt-5 grid gap-4 sm:grid-cols-2">
               <div className="rounded-[24px] border border-white/10 bg-black/20 p-5">
                 <div className="flex items-center gap-3">
@@ -282,7 +273,7 @@ export default async function TournamentDetailPage({
                   </form>
                 ) : (
                   <div className="rounded-[24px] border border-dashed border-white/15 bg-white/5 p-4 text-sm text-[#d6d3d1]">
-                    En ranking individual la app propone parejas por partido dentro de grupos y tú puedes ajustarlas debajo.
+                    En ranking individual la app propone parejas por partido dentro de grupos y tu puedes ajustarlas debajo.
                   </div>
                 )}
 
@@ -321,228 +312,15 @@ export default async function TournamentDetailPage({
           ) : null}
         </div>
 
-        <Card>
-          <p className="text-xs uppercase tracking-[0.2em] text-[#fdba74]">Reglas activas</p>
-          <div className="mt-5 grid gap-4 sm:grid-cols-2">
-            <div className="rounded-[24px] border border-white/10 bg-black/20 p-5">
-              <p className="text-xs uppercase tracking-[0.2em] text-[#fb923c]">Formato</p>
-              <p className="mt-3 text-xl font-semibold">Grupos + eliminatoria</p>
-              <p className="mt-2 text-sm text-[#d6d3d1]">
-                {detail.tournament.config.groupCount} grupos, {detail.tournament.config.qualifiersPerGroup} clasificados por grupo.
-              </p>
-            </div>
-            <div className="rounded-[24px] border border-white/10 bg-black/20 p-5">
-              <p className="text-xs uppercase tracking-[0.2em] text-[#fb923c]">Marcador</p>
-              <p className="mt-3 text-xl font-semibold">
-                Mejor de {detail.tournament.config.rules.bestOfSets} sets
-              </p>
-              <p className="mt-2 text-sm text-[#d6d3d1]">
-                Tie-break al {detail.tournament.config.rules.tiebreakAt}-{detail.tournament.config.rules.tiebreakAt}.
-              </p>
-            </div>
-          </div>
-        </Card>
+        <div />
       </div>
+    </div>
+  );
 
-      <section className="space-y-5">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-[#fdba74]">Grupos</p>
-            <h2 className="mt-2 font-[family:var(--font-display)] text-3xl tracking-tight">Calendario y clasificación</h2>
-          </div>
-          {detail.groups.length ? (
-            <Badge className="border-white/10 bg-white/5 text-[#fff7ed]">
-              {detail.groups.length} grupos generados
-            </Badge>
-          ) : null}
-        </div>
-
-        {!detail.groups.length ? (
-          <Card className="rounded-[28px] border-dashed">
-            <p className="text-sm text-[#d6d3d1]">
-              Aún no existe la fase de grupos. {isOrganizer ? "Usa el botón de arriba para generarla." : "El organizer todavía no ha publicado el calendario."}
-            </p>
-          </Card>
-        ) : null}
-
-        {detail.groups.map((groupView) => (
-          <Card key={groupView.group.id}>
-            <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
-              <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-[#fdba74]">{groupView.group.name}</p>
-                <h3 className="mt-2 font-[family:var(--font-display)] text-3xl tracking-tight">
-                  Clasificación actual
-                </h3>
-              </div>
-              <div className="min-w-0 lg:w-[28rem]">
-                <StandingsTable detail={detail} rows={groupView.standings} />
-              </div>
-            </div>
-
-            <div className="mt-6 grid gap-4">
-              {groupView.matches.map((match) => {
-                const home = labelForSide(detail, match.sides[0]);
-                const away = labelForSide(detail, match.sides[1]);
-                const canReport = userCanReportMatch(match, currentUser.id, isOrganizer);
-
-                return (
-                  <article key={match.id} className="rounded-[28px] border border-white/10 bg-black/20 p-5">
-                    <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-                      <div className="grid flex-1 gap-4 lg:grid-cols-[1fr_auto_1fr]">
-                        <div className="rounded-[22px] border border-white/10 bg-white/5 p-4">
-                          <p className="text-xs uppercase tracking-[0.2em] text-[#fb923c]">Home</p>
-                          <p className="mt-2 font-semibold">{home.title}</p>
-                          <p className="text-sm text-[#d6d3d1]">{home.subtitle}</p>
-                        </div>
-                        <div className="flex items-center justify-center">
-                          <div className="rounded-full border border-white/10 bg-black/30 px-4 py-2 text-sm font-semibold text-[#fde68a]">
-                            {match.validatedSubmission
-                              ? summarizeSubmission(match.validatedSubmission.sets)
-                              : match.latestSubmission
-                                ? "Pendiente review"
-                                : "Sin marcador"}
-                          </div>
-                        </div>
-                        <div className="rounded-[22px] border border-white/10 bg-white/5 p-4">
-                          <p className="text-xs uppercase tracking-[0.2em] text-[#fb923c]">Away</p>
-                          <p className="mt-2 font-semibold">{away.title}</p>
-                          <p className="text-sm text-[#d6d3d1]">{away.subtitle}</p>
-                        </div>
-                      </div>
-
-                      <div className="flex flex-wrap gap-2">
-                        <Badge className="border-white/10 bg-white/5 text-[#fff7ed]">
-                          {match.roundLabel}
-                        </Badge>
-                        <Badge className="border-white/10 bg-white/5 text-[#fff7ed]">
-                          {match.court || "Sin pista"}
-                        </Badge>
-                        <Badge className="border-white/10 bg-white/5 text-[#fff7ed]">
-                          {formatDateTimeLabel(match.scheduledAt)}
-                        </Badge>
-                      </div>
-                    </div>
-
-                    <div className="mt-5 grid gap-5 xl:grid-cols-3">
-                      {isOrganizer ? (
-                        <form action={updateMatchAction} className="grid gap-3 rounded-[24px] border border-white/10 bg-black/15 p-4">
-                          <input name="tournamentId" type="hidden" value={detail.tournament.id} />
-                          <input name="matchId" type="hidden" value={match.id} />
-                          <p className="text-xs uppercase tracking-[0.2em] text-[#fdba74]">Horario y pista</p>
-                          <input
-                            className="field-input"
-                            defaultValue={toDateTimeLocalInput(match.scheduledAt)}
-                            name="scheduledAt"
-                            type="datetime-local"
-                          />
-                          <input className="field-input" defaultValue={match.court ?? ""} name="court" placeholder="Pista 1" />
-                          <Button type="submit" variant="secondary">
-                            Guardar partido
-                          </Button>
-                        </form>
-                      ) : (
-                        <div className="rounded-[24px] border border-white/10 bg-black/15 p-4 text-sm text-[#d6d3d1]">
-                          <div className="flex items-center gap-2 text-[#fde68a]">
-                            <Clock3 className="size-4" />
-                            Estado: {match.status}
-                          </div>
-                          {match.latestSubmission?.notes ? (
-                            <p className="mt-3">{match.latestSubmission.notes}</p>
-                          ) : null}
-                        </div>
-                      )}
-
-                      {isOrganizer &&
-                      detail.tournament.mode === "individual_ranking" &&
-                      match.groupId ? (
-                        <form action={updateIndividualPairingAction} className="grid gap-3 rounded-[24px] border border-white/10 bg-black/15 p-4">
-                          <input name="tournamentId" type="hidden" value={detail.tournament.id} />
-                          <input name="matchId" type="hidden" value={match.id} />
-                          <p className="text-xs uppercase tracking-[0.2em] text-[#fdba74]">Ajustar parejas</p>
-                          <div className="grid gap-2 sm:grid-cols-2">
-                            <select className="field-select" defaultValue={match.sides[0].playerIds[0]} name="homePlayer1Id">
-                              {playerOptions.map((player) => (
-                                <option key={player.id} value={player.id}>
-                                  {player.fullName}
-                                </option>
-                              ))}
-                            </select>
-                            <select className="field-select" defaultValue={match.sides[0].playerIds[1]} name="homePlayer2Id">
-                              {playerOptions.map((player) => (
-                                <option key={player.id} value={player.id}>
-                                  {player.fullName}
-                                </option>
-                              ))}
-                            </select>
-                            <select className="field-select" defaultValue={match.sides[1].playerIds[0]} name="awayPlayer1Id">
-                              {playerOptions.map((player) => (
-                                <option key={player.id} value={player.id}>
-                                  {player.fullName}
-                                </option>
-                              ))}
-                            </select>
-                            <select className="field-select" defaultValue={match.sides[1].playerIds[1]} name="awayPlayer2Id">
-                              {playerOptions.map((player) => (
-                                <option key={player.id} value={player.id}>
-                                  {player.fullName}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                          <Button type="submit" variant="secondary">
-                            Actualizar parejas
-                          </Button>
-                        </form>
-                      ) : (
-                        <div className="rounded-[24px] border border-white/10 bg-black/15 p-4 text-sm text-[#d6d3d1]">
-                          <div className="flex items-center gap-2 text-[#fde68a]">
-                            <Flag className="size-4" />
-                            Último estado de marcador
-                          </div>
-                          <p className="mt-3">
-                            {match.latestSubmission
-                              ? summarizeSubmission(match.latestSubmission.sets)
-                              : "Nadie ha enviado resultado todavía."}
-                          </p>
-                          {match.latestSubmission?.notes ? (
-                            <p className="mt-2 text-xs text-[#a8a29e]">{match.latestSubmission.notes}</p>
-                          ) : null}
-                        </div>
-                      )}
-
-                      {canReport ? (
-                        <form action={submitScoreAction} className="grid gap-3 rounded-[24px] border border-white/10 bg-black/15 p-4">
-                          <input name="tournamentId" type="hidden" value={detail.tournament.id} />
-                          <input name="matchId" type="hidden" value={match.id} />
-                          <p className="text-xs uppercase tracking-[0.2em] text-[#fdba74]">
-                            {match.validatedSubmission ? "Enviar corrección" : "Subir resultado"}
-                          </p>
-                          <div className="grid gap-2 sm:grid-cols-3">
-                            {[1, 2, 3].map((setIndex) => (
-                              <div key={setIndex} className="grid gap-2 rounded-[18px] border border-white/10 bg-white/5 p-3">
-                                <p className="text-xs uppercase tracking-[0.2em] text-[#fb923c]">Set {setIndex}</p>
-                                <div className="grid grid-cols-2 gap-2">
-                                  <input className="field-input" min="0" name={`set${setIndex}Home`} placeholder="H" type="number" />
-                                  <input className="field-input" min="0" name={`set${setIndex}Away`} placeholder="A" type="number" />
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                          <textarea className="field-textarea" name="notes" placeholder="Notas opcionales para revisión..." />
-                          <Button type="submit">
-                            {match.validatedSubmission ? "Enviar nuevo marcador" : "Mandar a validación"}
-                          </Button>
-                        </form>
-                      ) : null}
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
-          </Card>
-        ))}
-      </section>
-
+  /* ── Matches tab content ───────────────────────────────────────────── */
+  const matchesContent = (
+    <div className="space-y-6">
+      {/* Pending submissions review queue (organizer only) */}
       {isOrganizer && detail.pendingSubmissions.length ? (
         <section className="space-y-4">
           <div>
@@ -591,6 +369,226 @@ export default async function TournamentDetailPage({
         </section>
       ) : null}
 
+      {/* Group matches */}
+      {!detail.groups.length ? (
+        <Card className="rounded-[28px] border-dashed">
+          <p className="text-sm text-[#d6d3d1]">
+            Aun no existe la fase de grupos. {isOrganizer ? "Genera la fase de grupos desde la pestana de Resumen." : "El organizer todavia no ha publicado el calendario."}
+          </p>
+        </Card>
+      ) : null}
+
+      {detail.groups.map((groupView) => (
+        <Card key={groupView.group.id}>
+          <p className="text-xs uppercase tracking-[0.2em] text-[#fdba74]">{groupView.group.name}</p>
+          <div className="mt-6 grid gap-4">
+            {groupView.matches.map((match) => {
+              const home = labelForSide(detail, match.sides[0]);
+              const away = labelForSide(detail, match.sides[1]);
+              const canReport = userCanReportMatch(match, currentUser.id, isOrganizer);
+
+              return (
+                <article key={match.id} className="rounded-[28px] border border-white/10 bg-black/20 p-5">
+                  <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                    <div className="grid flex-1 gap-4 lg:grid-cols-[1fr_auto_1fr]">
+                      <div className="rounded-[22px] border border-white/10 bg-white/5 p-4">
+                        <p className="text-xs uppercase tracking-[0.2em] text-[#fb923c]">Home</p>
+                        <p className="mt-2 font-semibold">{home.title}</p>
+                        <p className="text-sm text-[#d6d3d1]">{home.subtitle}</p>
+                      </div>
+                      <div className="flex items-center justify-center">
+                        <div className="rounded-full border border-white/10 bg-black/30 px-4 py-2 text-sm font-semibold text-[#fde68a]">
+                          {match.validatedSubmission
+                            ? summarizeSubmission(match.validatedSubmission.sets)
+                            : match.latestSubmission
+                              ? "Pendiente review"
+                              : "Sin marcador"}
+                        </div>
+                      </div>
+                      <div className="rounded-[22px] border border-white/10 bg-white/5 p-4">
+                        <p className="text-xs uppercase tracking-[0.2em] text-[#fb923c]">Away</p>
+                        <p className="mt-2 font-semibold">{away.title}</p>
+                        <p className="text-sm text-[#d6d3d1]">{away.subtitle}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      <Badge className="border-white/10 bg-white/5 text-[#fff7ed]">
+                        {match.roundLabel}
+                      </Badge>
+                      <Badge className="border-white/10 bg-white/5 text-[#fff7ed]">
+                        {match.court || "Sin pista"}
+                      </Badge>
+                      <Badge className="border-white/10 bg-white/5 text-[#fff7ed]">
+                        {formatDateTimeLabel(match.scheduledAt)}
+                      </Badge>
+                    </div>
+                  </div>
+
+                  <div className="mt-5 grid gap-5 xl:grid-cols-3">
+                    {isOrganizer ? (
+                      <form action={updateMatchAction} className="grid gap-3 rounded-[24px] border border-white/10 bg-black/15 p-4">
+                        <input name="tournamentId" type="hidden" value={detail.tournament.id} />
+                        <input name="matchId" type="hidden" value={match.id} />
+                        <p className="text-xs uppercase tracking-[0.2em] text-[#fdba74]">Horario y pista</p>
+                        <input
+                          className="field-input"
+                          defaultValue={toDateTimeLocalInput(match.scheduledAt)}
+                          name="scheduledAt"
+                          type="datetime-local"
+                        />
+                        <input className="field-input" defaultValue={match.court ?? ""} name="court" placeholder="Pista 1" />
+                        <Button type="submit" variant="secondary">
+                          Guardar partido
+                        </Button>
+                      </form>
+                    ) : (
+                      <div className="rounded-[24px] border border-white/10 bg-black/15 p-4 text-sm text-[#d6d3d1]">
+                        <div className="flex items-center gap-2 text-[#fde68a]">
+                          <Clock3 className="size-4" />
+                          Estado: {match.status}
+                        </div>
+                        {match.latestSubmission?.notes ? (
+                          <p className="mt-3">{match.latestSubmission.notes}</p>
+                        ) : null}
+                      </div>
+                    )}
+
+                    {isOrganizer &&
+                    detail.tournament.mode === "individual_ranking" &&
+                    match.groupId ? (
+                      <form action={updateIndividualPairingAction} className="grid gap-3 rounded-[24px] border border-white/10 bg-black/15 p-4">
+                        <input name="tournamentId" type="hidden" value={detail.tournament.id} />
+                        <input name="matchId" type="hidden" value={match.id} />
+                        <p className="text-xs uppercase tracking-[0.2em] text-[#fdba74]">Ajustar parejas</p>
+                        <div className="grid gap-2 sm:grid-cols-2">
+                          <select className="field-select" defaultValue={match.sides[0].playerIds[0]} name="homePlayer1Id">
+                            {playerOptions.map((player) => (
+                              <option key={player.id} value={player.id}>
+                                {player.fullName}
+                              </option>
+                            ))}
+                          </select>
+                          <select className="field-select" defaultValue={match.sides[0].playerIds[1]} name="homePlayer2Id">
+                            {playerOptions.map((player) => (
+                              <option key={player.id} value={player.id}>
+                                {player.fullName}
+                              </option>
+                            ))}
+                          </select>
+                          <select className="field-select" defaultValue={match.sides[1].playerIds[0]} name="awayPlayer1Id">
+                            {playerOptions.map((player) => (
+                              <option key={player.id} value={player.id}>
+                                {player.fullName}
+                              </option>
+                            ))}
+                          </select>
+                          <select className="field-select" defaultValue={match.sides[1].playerIds[1]} name="awayPlayer2Id">
+                            {playerOptions.map((player) => (
+                              <option key={player.id} value={player.id}>
+                                {player.fullName}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <Button type="submit" variant="secondary">
+                          Actualizar parejas
+                        </Button>
+                      </form>
+                    ) : (
+                      <div className="rounded-[24px] border border-white/10 bg-black/15 p-4 text-sm text-[#d6d3d1]">
+                        <div className="flex items-center gap-2 text-[#fde68a]">
+                          <Flag className="size-4" />
+                          Ultimo estado de marcador
+                        </div>
+                        <p className="mt-3">
+                          {match.latestSubmission
+                            ? summarizeSubmission(match.latestSubmission.sets)
+                            : "Nadie ha enviado resultado todavia."}
+                        </p>
+                        {match.latestSubmission?.notes ? (
+                          <p className="mt-2 text-xs text-[#a8a29e]">{match.latestSubmission.notes}</p>
+                        ) : null}
+                      </div>
+                    )}
+
+                    {canReport ? (
+                      <form action={submitScoreAction} className="grid gap-3 rounded-[24px] border border-white/10 bg-black/15 p-4">
+                        <input name="tournamentId" type="hidden" value={detail.tournament.id} />
+                        <input name="matchId" type="hidden" value={match.id} />
+                        <p className="text-xs uppercase tracking-[0.2em] text-[#fdba74]">
+                          {match.validatedSubmission ? "Enviar correccion" : "Subir resultado"}
+                        </p>
+                        <div className="grid gap-2 sm:grid-cols-3">
+                          {[1, 2, 3].map((setIndex) => (
+                            <div key={setIndex} className="grid gap-2 rounded-[18px] border border-white/10 bg-white/5 p-3">
+                              <p className="text-xs uppercase tracking-[0.2em] text-[#fb923c]">Set {setIndex}</p>
+                              <div className="grid grid-cols-2 gap-2">
+                                <input className="field-input" min="0" name={`set${setIndex}Home`} placeholder="H" type="number" />
+                                <input className="field-input" min="0" name={`set${setIndex}Away`} placeholder="A" type="number" />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        <textarea className="field-textarea" name="notes" placeholder="Notas opcionales para revision..." />
+                        <Button type="submit">
+                          {match.validatedSubmission ? "Enviar nuevo marcador" : "Mandar a validacion"}
+                        </Button>
+                      </form>
+                    ) : null}
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        </Card>
+      ))}
+    </div>
+  );
+
+  /* ── Standings / Bracket tab content ───────────────────────────────── */
+  const standingsContent = (
+    <div className="space-y-6">
+      {/* Group standings */}
+      <section className="space-y-5">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-xs uppercase tracking-[0.2em] text-[#fdba74]">Grupos</p>
+            <h2 className="mt-2 font-[family:var(--font-display)] text-3xl tracking-tight">Clasificacion</h2>
+          </div>
+          {detail.groups.length ? (
+            <Badge className="border-white/10 bg-white/5 text-[#fff7ed]">
+              {detail.groups.length} grupos generados
+            </Badge>
+          ) : null}
+        </div>
+
+        {!detail.groups.length ? (
+          <Card className="rounded-[28px] border-dashed">
+            <p className="text-sm text-[#d6d3d1]">
+              Aun no existe la fase de grupos. {isOrganizer ? "Genera la fase de grupos desde la pestana de Resumen." : "El organizer todavia no ha publicado el calendario."}
+            </p>
+          </Card>
+        ) : null}
+
+        {detail.groups.map((groupView) => (
+          <Card key={groupView.group.id}>
+            <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+              <div>
+                <p className="text-xs uppercase tracking-[0.2em] text-[#fdba74]">{groupView.group.name}</p>
+                <h3 className="mt-2 font-[family:var(--font-display)] text-3xl tracking-tight">
+                  Clasificacion actual
+                </h3>
+              </div>
+              <div className="min-w-0 lg:w-[28rem]">
+                <StandingsTable detail={detail} rows={groupView.standings} />
+              </div>
+            </div>
+          </Card>
+        ))}
+      </section>
+
+      {/* Knockout bracket */}
       <section className="space-y-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
@@ -601,7 +599,7 @@ export default async function TournamentDetailPage({
             detail.tournament.mode === "fixed_pairs" ? (
               <form action={generateKnockoutAction}>
                 <input name="tournamentId" type="hidden" value={detail.tournament.id} />
-                <Button type="submit">Generar cuadro automáticamente</Button>
+                <Button type="submit">Generar cuadro automaticamente</Button>
               </form>
             ) : null
           ) : null}
@@ -644,6 +642,68 @@ export default async function TournamentDetailPage({
 
         <KnockoutBracket detail={detail} />
       </section>
+    </div>
+  );
+
+  /* ── Players tab content ───────────────────────────────────────────── */
+  const playersContent = <TournamentPlayers players={playersList} />;
+
+  /* ── Rules tab content ─────────────────────────────────────────────── */
+  const rulesContent = (
+    <TournamentRulesView
+      rules={detail.tournament.config.rules}
+      format={detail.tournament.mode === "fixed_pairs" ? "Grupos + eliminatoria (parejas fijas)" : "Grupos + eliminatoria (ranking individual)"}
+      groupCount={detail.tournament.config.groupCount}
+      qualifiersPerGroup={detail.tournament.config.qualifiersPerGroup}
+    />
+  );
+
+  return (
+    <div className="space-y-6">
+      <RealtimeRefresher tournamentId={detail.tournament.id} />
+      <Card className="surface-grid overflow-hidden">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <div className="flex flex-wrap items-center gap-3">
+              <h1 className="font-[family:var(--font-display)] text-4xl tracking-tight sm:text-5xl">
+                {detail.tournament.name}
+              </h1>
+              <Badge>{detail.membership.role === "organizer" ? "Organizer" : "Player"}</Badge>
+              <Badge className="border-white/10 bg-white/5 text-[#fff7ed]">
+                {detail.tournament.mode === "fixed_pairs" ? "Parejas fijas" : "Ranking individual"}
+              </Badge>
+            </div>
+            <p className="mt-4 text-sm leading-7 text-[#d6d3d1]">
+              {formatDateLabel(detail.tournament.startsAt)} a {formatDateLabel(detail.tournament.endsAt)} ·{" "}
+              {detail.tournament.location}
+            </p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="rounded-[24px] border border-white/10 bg-black/20 p-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-[#fb923c]">Jugadores</p>
+              <p className="mt-2 text-3xl font-semibold">{playerOptions.length}</p>
+            </div>
+            <div className="rounded-[24px] border border-white/10 bg-black/20 p-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-[#fb923c]">Pendientes</p>
+              <p className="mt-2 text-3xl font-semibold">{detail.pendingSubmissions.length}</p>
+            </div>
+            <div className="rounded-[24px] border border-white/10 bg-black/20 p-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-[#fb923c]">Estado</p>
+              <p className="mt-2 text-3xl font-semibold capitalize">{detail.tournament.status}</p>
+            </div>
+          </div>
+        </div>
+      </Card>
+
+      <TournamentTabs>
+        {{
+          summary: summaryContent,
+          matches: matchesContent,
+          standings: standingsContent,
+          players: playersContent,
+          rules: rulesContent,
+        }}
+      </TournamentTabs>
     </div>
   );
 }
