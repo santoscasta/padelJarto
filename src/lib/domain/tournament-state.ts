@@ -3,12 +3,9 @@ import type { TournamentStatus } from "./types";
 const VALID_TRANSITIONS: Record<TournamentStatus, TournamentStatus[]> = {
   draft: ['published', 'cancelled'],
   published: ['in_progress', 'cancelled', 'draft'],
-  in_progress: ['finished', 'cancelled'],
-  finished: [],
-  cancelled: ['draft'],
-  // Legacy statuses - allow transitioning away from them
-  live: ['finished', 'cancelled'],
+  in_progress: ['completed', 'cancelled'],
   completed: [],
+  cancelled: ['draft'],
 };
 
 export function canTransition(from: TournamentStatus, to: TournamentStatus): boolean {
@@ -24,10 +21,8 @@ export function transitionLabel(status: TournamentStatus): string {
     draft: 'Borrador',
     published: 'Publicado',
     in_progress: 'En curso',
-    finished: 'Finalizado',
-    cancelled: 'Cancelado',
-    live: 'En directo',
     completed: 'Completado',
+    cancelled: 'Cancelado',
   };
   return labels[status] ?? status;
 }
