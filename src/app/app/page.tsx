@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Plus, CalendarRange, Trophy, Users, AlertCircle, ChevronRight } from "lucide-react";
+import { Plus, CalendarRange, Trophy, Users, AlertCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";

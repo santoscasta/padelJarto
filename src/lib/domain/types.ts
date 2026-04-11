@@ -432,6 +432,8 @@ export interface UpdateProfileInput {
   city?: string;
   level?: string;
   dominantHand?: "right" | "left" | "ambidextrous";
+  club?: string;
+  bio?: string;
 }
 
 export interface CreateClubInput {

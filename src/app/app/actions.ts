@@ -367,6 +367,8 @@ export async function updateProfileAction(formData: FormData) {
       city: String(formData.get("city") ?? "").trim() || undefined,
       level: String(formData.get("level") ?? "").trim() || undefined,
       dominantHand: (formData.get("dominantHand") as "right" | "left" | "ambidextrous" | undefined) || undefined,
+      club: String(formData.get("club") ?? "").trim() || undefined,
+      bio: String(formData.get("bio") ?? "").trim() || undefined,
     },
     currentUser.id,
   );

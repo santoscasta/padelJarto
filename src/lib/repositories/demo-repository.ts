@@ -968,6 +968,8 @@ export class DemoTournamentRepository implements TournamentRepository {
       if (input.city !== undefined) profile.city = input.city;
       if (input.level !== undefined) profile.level = input.level;
       if (input.dominantHand !== undefined) profile.dominantHand = input.dominantHand;
+      if (input.club !== undefined) profile.club = input.club;
+      if (input.bio !== undefined) profile.bio = input.bio;
     });
   }
 

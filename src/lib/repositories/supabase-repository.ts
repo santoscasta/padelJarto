@@ -1385,6 +1385,8 @@ export class SupabaseTournamentRepository implements TournamentRepository {
     if (input.city !== undefined) updates.city = input.city;
     if (input.level !== undefined) updates.level = input.level;
     if (input.dominantHand !== undefined) updates.dominant_hand = input.dominantHand;
+    if (input.club !== undefined) updates.club = input.club;
+    if (input.bio !== undefined) updates.bio = input.bio;
 
     const { error } = await client.from("profiles").update(updates).eq("id", userId);
     if (error) throw error;

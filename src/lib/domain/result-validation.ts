@@ -1,4 +1,4 @@
-import type { MatchResultProposal, MatchResultValidation } from "./types";
+import type { MatchResultValidation } from "./types";
 
 /** Determine the winner from a set score array */
 export function computeWinnerFromSets(sets: [number, number][]): 'home' | 'away' | null {

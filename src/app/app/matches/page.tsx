@@ -2,7 +2,7 @@ import { Card } from "@/components/ui/card";
 import { requireCurrentUser } from "@/lib/auth/session";
 
 export default async function MatchesPage() {
-  const currentUser = await requireCurrentUser();
+  const _currentUser = await requireCurrentUser();
 
   return (
     <div className="grid gap-6">

@@ -52,10 +52,10 @@ export function ProfileEditForm({ profile }: ProfileEditFormProps) {
           className="field-select"
         >
           <option value="">Sin especificar</option>
-          <option value="principiante">Principiante</option>
-          <option value="intermedio">Intermedio</option>
-          <option value="avanzado">Avanzado</option>
-          <option value="competicion">Competición</option>
+          <option value="beginner">Principiante</option>
+          <option value="intermediate">Intermedio</option>
+          <option value="advanced">Avanzado</option>
+          <option value="pro">Profesional</option>
         </select>
       </div>
 
@@ -71,6 +71,27 @@ export function ProfileEditForm({ profile }: ProfileEditFormProps) {
           <option value="left">Zurdo</option>
           <option value="ambidextrous">Ambidiestro</option>
         </select>
+      </div>
+
+      <div>
+        <label className="field-label">Club</label>
+        <input
+          name="club"
+          type="text"
+          defaultValue={profile.club ?? ""}
+          className="field-input"
+          placeholder="Club de pádel..."
+        />
+      </div>
+
+      <div>
+        <label className="field-label">Bio</label>
+        <textarea
+          name="bio"
+          defaultValue={profile.bio ?? ""}
+          className="field-input min-h-[80px] resize-none"
+          placeholder="Algo sobre ti..."
+        />
       </div>
 
       <Button type="submit">Guardar cambios</Button>
