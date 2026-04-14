@@ -39,7 +39,7 @@ export default async function InvitePage({
         <Card>
           <p className="mb-4 text-sm">Inicia sesión para unirte al torneo.</p>
           <Button asChild>
-            <Link href={`/login?next=/invite/${token}`}>Entrar con Google</Link>
+            <Link href={`/login?next=/invite/${token}`}>Entrar</Link>
           </Button>
         </Card>
       ) : tournament.status !== 'open' ? (
