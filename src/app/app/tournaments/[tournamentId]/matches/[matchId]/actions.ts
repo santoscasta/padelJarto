@@ -8,6 +8,9 @@ import { fail, ok, type ActionResult } from '@/lib/domain/action-result';
 import type { Result } from '@/lib/domain/types';
 import { validateSets, winnerOfSets } from '@/lib/domain/result';
 import { applyRating } from '@/lib/domain/rating';
+import { enqueueNotification } from '@/lib/notifications/enqueue';
+import { readDispatcherEnv } from '@/lib/notifications/dispatcher-env';
+import { matchLabel } from '@/lib/domain/match-label';
 
 const ReportResultSchema = z.object({
   matchId: z.string().uuid().or(z.string().min(1)),
@@ -60,11 +63,23 @@ export async function reportResultAction(input: z.input<typeof ReportResultSchem
 
     const tournament = await repo.getTournament(match.tournamentId);
     if (tournament) {
-      await repo.createNotification({
-        userId: tournament.ownerId,
-        kind: 'result_reported',
-        payload: { tournamentId: tournament.id, matchId: match.id, resultId: reported.id },
-      });
+      try {
+        const dispatchEnv = readDispatcherEnv();
+        await enqueueNotification(repo, {
+          userId: tournament.ownerId,
+          kind: 'result_reported',
+          payload: {
+            kind: 'result_reported',
+            tournamentName: tournament.name,
+            matchLabel: matchLabel(match),
+            sets: parsed.data.sets.map((s) => [s.a, s.b] as const),
+          },
+          dispatcherUrl: dispatchEnv.url,
+          dispatcherKey: dispatchEnv.key,
+        });
+      } catch {
+        // notifications unavailable
+      }
     }
     revalidatePath(`/app/tournaments/${match.tournamentId}/matches/${match.id}`);
     return ok(reported);
@@ -118,16 +133,26 @@ export async function validateResultAction(input: z.input<typeof ValidateSchema>
     });
 
     // Notify 4 players.
-    for (const p of playersArr) {
-      if (!p) continue;
-      await repo.createNotification({
-        userId: p.profileId,
-        kind: 'result_validated',
-        payload: {
-          tournamentId: tournament.id, matchId: match.id, resultId: validated.id,
-          delta: newPlayerRatings[p.id] - p.rating,
-        },
-      });
+    try {
+      const dispatchEnv = readDispatcherEnv();
+      await Promise.all(
+        playersArr.filter((p): p is NonNullable<typeof p> => !!p).map((p) =>
+          enqueueNotification(repo, {
+            userId: p.profileId,
+            kind: 'result_validated',
+            payload: {
+              kind: 'result_validated',
+              tournamentName: tournament.name,
+              matchLabel: matchLabel(match),
+              sets: validated.sets.map((s) => [s.a, s.b] as const),
+            },
+            dispatcherUrl: dispatchEnv.url,
+            dispatcherKey: dispatchEnv.key,
+          }),
+        ),
+      );
+    } catch {
+      // notifications unavailable
     }
     revalidatePath(`/app/tournaments/${tournament.id}`);
     return ok(validated);

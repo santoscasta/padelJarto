@@ -6,6 +6,8 @@ import { requireSession } from '@/lib/auth/session';
 import { getRepo } from '@/lib/repositories/provider';
 import { fail, ok, type ActionResult } from '@/lib/domain/action-result';
 import type { Inscription } from '@/lib/domain/types';
+import { enqueueNotification } from '@/lib/notifications/enqueue';
+import { readDispatcherEnv } from '@/lib/notifications/dispatcher-env';
 
 const InscribeSchema = z.discriminatedUnion('mode', [
   z.object({ mode: z.literal('solo'), token: z.string().min(8) }),
@@ -53,10 +55,22 @@ export async function inscribeFromInviteAction(input: InscribeInput): Promise<Ac
     const ins = await repo.createInscription({
       tournamentId: t.id, playerId: session.player.id, pairId,
     });
-    await repo.createNotification({
-      userId: t.ownerId, kind: 'inscription_new',
-      payload: { tournamentId: t.id, playerId: session.player.id, playerName: session.displayName },
-    });
+    try {
+      const dispatchEnv = readDispatcherEnv();
+      await enqueueNotification(repo, {
+        userId: t.ownerId,
+        kind: 'inscription_new',
+        payload: {
+          kind: 'inscription_new',
+          tournamentName: t.name,
+          actorName: session.displayName,
+        },
+        dispatcherUrl: dispatchEnv.url,
+        dispatcherKey: dispatchEnv.key,
+      });
+    } catch {
+      // notifications unavailable
+    }
     revalidatePath(`/app/tournaments/${t.id}`);
     return ok(ins);
   } catch (err) {

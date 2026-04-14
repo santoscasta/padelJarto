@@ -17,6 +17,8 @@ import type { Tournament } from '@/lib/domain/types';
 import { generateGroups, generateRoundRobinMatches, knockoutPhaseFor, seedKnockout } from '@/lib/domain/bracket';
 import { drawPairs } from '@/lib/domain/pairing';
 import { computeStandings } from '@/lib/domain/standings';
+import { enqueueNotification } from '@/lib/notifications/enqueue';
+import { readDispatcherEnv } from '@/lib/notifications/dispatcher-env';
 
 const CreateTournamentSchema = z.object({
   name: z.string().trim().min(3).max(80),
@@ -82,6 +84,28 @@ export async function openTournamentAction(tournamentId: string): Promise<Action
     if (t.ownerId !== session.userId) return fail('NOT_AUTHORIZED', 'No eres el organizador');
     if (t.status !== 'draft') return fail('CONFLICT', 'El torneo ya no está en borrador');
     const updated = await repo.updateTournamentStatus(tournamentId, 'open');
+    try {
+      const dispatchEnv = readDispatcherEnv();
+      const allPlayers = await repo.listPlayers();
+      const origin = process.env.APP_ORIGIN ?? 'https://padeljarto.app';
+      await Promise.all(
+        allPlayers.map((p) =>
+          enqueueNotification(repo, {
+            userId: p.profileId,
+            kind: 'tournament_open',
+            payload: {
+              kind: 'tournament_open',
+              tournamentName: updated.name,
+              inviteUrl: `${origin}/app/tournaments/${updated.id}`,
+            },
+            dispatcherUrl: dispatchEnv.url,
+            dispatcherKey: dispatchEnv.key,
+          }),
+        ),
+      );
+    } catch {
+      // Email dispatch unavailable — continue without notifications.
+    }
     revalidatePath(`/app/tournaments/${tournamentId}`);
     return ok(updated);
   });
@@ -130,6 +154,32 @@ export async function startTournamentAction(tournamentId: string, seed = Date.no
     await repo.createMatches(rrMatches);
 
     const updated = await repo.updateTournamentStatus(tournamentId, 'groups');
+    try {
+      const dispatchEnv = readDispatcherEnv();
+      const startedInscriptions = await repo.listInscriptions(tournamentId);
+      const allPlayers = await repo.listPlayers();
+      const playerById = new Map(allPlayers.map((p) => [p.id, p] as const));
+      const origin = process.env.APP_ORIGIN ?? 'https://padeljarto.app';
+      await Promise.all(
+        startedInscriptions.map(async (ins) => {
+          const player = playerById.get(ins.playerId);
+          if (!player) return;
+          await enqueueNotification(repo, {
+            userId: player.profileId,
+            kind: 'tournament_started',
+            payload: {
+              kind: 'tournament_started',
+              tournamentName: updated.name,
+              tournamentUrl: `${origin}/app/tournaments/${updated.id}`,
+            },
+            dispatcherUrl: dispatchEnv.url,
+            dispatcherKey: dispatchEnv.key,
+          });
+        }),
+      );
+    } catch {
+      // Email dispatch unavailable — continue without notifications.
+    }
     revalidatePath(`/app/tournaments/${tournamentId}`);
     return ok(updated);
   });
