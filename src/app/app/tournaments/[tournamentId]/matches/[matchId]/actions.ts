@@ -121,6 +121,9 @@ async function validateResultCore(
   }
   const match = await repo.getMatch(parsed.data.matchId);
   if (!match) return fail('NOT_FOUND', 'Partido no encontrado');
+  if (match.tournamentId !== tournament.id) {
+    return fail('NOT_AUTHORIZED', 'El partido no pertenece a este torneo');
+  }
   const reported = await repo.getResultForMatch(match.id);
   if (!reported) return fail('NOT_FOUND', 'No hay resultado reportado');
   if (reported.status === 'validated') return fail('RESULT_ALREADY_VALIDATED', 'Ya validado');
@@ -204,6 +207,9 @@ export async function correctResultAction(input: z.input<typeof CorrectSchema>):
     }
     const match = await repo.getMatch(parsed.data.matchId);
     if (!match) return fail('NOT_FOUND', 'Partido no encontrado');
+    if (match.tournamentId !== tournament.id) {
+      return fail('NOT_AUTHORIZED', 'El partido no pertenece a este torneo');
+    }
     const original = await repo.getResultForMatch(match.id);
     if (!original) return fail('NOT_FOUND', 'No hay resultado que corregir');
 
