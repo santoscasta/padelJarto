@@ -1,0 +1,29 @@
+@import "tailwindcss";
+
+@theme {
+  --color-surface: oklch(98% 0 0);
+  --color-surface-2: oklch(95% 0.01 250);
+  --color-ink: oklch(18% 0.02 260);
+  --color-ink-soft: oklch(38% 0.02 260);
+  --color-accent: oklch(62% 0.19 150);
+  --color-accent-ink: oklch(18% 0.02 150);
+  --color-danger: oklch(55% 0.22 25);
+  --color-warn: oklch(75% 0.16 80);
+  --color-ok: oklch(68% 0.17 150);
+
+  --radius-sm: 0.375rem;
+  --radius-md: 0.625rem;
+  --radius-lg: 1rem;
+
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.04), 0 8px 24px -12px rgb(0 0 0 / 0.12);
+
+  --text-display: clamp(2rem, 1.4rem + 2vw, 3rem);
+  --text-h1: clamp(1.5rem, 1.2rem + 1vw, 2rem);
+
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Inter", ui-sans-serif, system-ui, sans-serif;
+
+  --duration-fast: 150ms;
+  --duration-normal: 300ms;
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+}

@@ -1,21 +1,23 @@
-import { AppShell } from "@/components/app-shell";
-import { requireCurrentUser } from "@/lib/auth/session";
-import { getTournamentRepository } from "@/lib/repositories";
+import Link from 'next/link';
+import { Suspense } from 'react';
+import { BottomNav } from '@/components/shell/BottomNav';
+import { NotificationBell } from '@/components/shell/NotificationBell';
+import { InstallPrompt } from '@/components/pwa/InstallPrompt';
 
-export const dynamic = "force-dynamic";
-
-export default async function AuthenticatedLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
-  const currentUser = await requireCurrentUser();
-  const repository = getTournamentRepository();
-  const notifications = await repository.getNotifications(currentUser.id);
-
+export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
-    <AppShell currentUser={currentUser} notifications={notifications}>
-      {children}
-    </AppShell>
+    <div className="min-h-dvh pb-20">
+      <header className="sticky top-0 z-30 border-b border-black/5 bg-[color:var(--color-surface)]/90 backdrop-blur">
+        <div className="mx-auto flex h-14 max-w-xl items-center justify-between px-4">
+          <Link href="/app" className="font-semibold tracking-tight">Padeljarto</Link>
+          <Suspense fallback={null}>
+            <NotificationBell />
+          </Suspense>
+        </div>
+      </header>
+      <main className="mx-auto max-w-xl px-4 py-6">{children}</main>
+      <InstallPrompt />
+      <BottomNav />
+    </div>
   );
 }

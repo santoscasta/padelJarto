@@ -1,19 +1,28 @@
-"use server";
+'use server';
 
-import { revalidatePath } from "next/cache";
-import { requireCurrentUser } from "@/lib/auth/session";
-import { markNotificationRead, markAllNotificationsRead } from "@/lib/repositories/notification-repository";
+import { z } from 'zod';
+import { revalidatePath } from 'next/cache';
+import { requireSession } from '@/lib/auth/session';
+import { getRepo } from '@/lib/repositories/provider';
+import { fail, ok, type ActionResult } from '@/lib/domain/action-result';
 
-export async function markReadAction(formData: FormData) {
-  const user = await requireCurrentUser();
-  const notificationId = formData.get("notificationId") as string;
-  if (!notificationId) return;
-  await markNotificationRead(notificationId, user.id);
-  revalidatePath("/app");
-}
+const MarkReadSchema = z.object({ notificationId: z.string().min(1) });
 
-export async function markAllReadAction() {
-  const user = await requireCurrentUser();
-  await markAllNotificationsRead(user.id);
-  revalidatePath("/app");
+export async function markNotificationReadAction(
+  input: z.input<typeof MarkReadSchema>,
+): Promise<ActionResult<{ id: string }>> {
+  try {
+    const session = await requireSession();
+    const parsed = MarkReadSchema.safeParse(input);
+    if (!parsed.success) return fail('VALIDATION_FAILED', 'Datos inválidos');
+    const repo = await getRepo();
+    await repo.markNotificationRead(parsed.data.notificationId, session.userId);
+    revalidatePath('/app');
+    return ok({ id: parsed.data.notificationId });
+  } catch (err) {
+    if (err instanceof Error && err.message === 'NOT_AUTHORIZED') {
+      return fail('NOT_AUTHORIZED', 'Debes iniciar sesión');
+    }
+    return fail('UNEXPECTED', err instanceof Error ? err.message : 'Error inesperado');
+  }
 }

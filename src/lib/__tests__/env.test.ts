@@ -1,39 +1,24 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
-afterEach(() => {
-  vi.unstubAllEnvs();
-  vi.resetModules();
-});
-
-describe("getAppUrl", () => {
-  it("prefers NEXT_PUBLIC_APP_URL when configured", async () => {
-    vi.stubEnv("NEXT_PUBLIC_APP_URL", "https://padeljarto.app/");
-    vi.stubEnv("VERCEL_PROJECT_PRODUCTION_URL", "padeljarto.vercel.app");
-
-    const { getAppUrl } = await import("@/lib/env");
-
-    expect(getAppUrl()).toBe("https://padeljarto.app");
+describe('env', () => {
+  afterEach(() => {
+    vi.resetModules();
+    vi.unstubAllEnvs();
   });
 
-  it("falls back to the Vercel production URL", async () => {
-    vi.stubEnv("VERCEL_PROJECT_PRODUCTION_URL", "padeljarto.vercel.app");
-
-    const { getAppUrl } = await import("@/lib/env");
-
-    expect(getAppUrl()).toBe("https://padeljarto.vercel.app");
+  it('returns all required server env vars when set', async () => {
+    vi.stubEnv('NEXT_PUBLIC_APP_URL', 'http://localhost:3000');
+    vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'https://x.supabase.co');
+    vi.stubEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY', 'anon-key');
+    vi.stubEnv('SUPABASE_SERVICE_ROLE_KEY', 'service-key');
+    vi.stubEnv('RESEND_API_KEY', 'resend-key');
+    const { getServerEnv } = await import('../env');
+    expect(getServerEnv().NEXT_PUBLIC_APP_URL).toBe('http://localhost:3000');
   });
 
-  it("falls back to the deployment URL when only VERCEL_URL is present", async () => {
-    vi.stubEnv("VERCEL_URL", "padeljarto-git-main-example.vercel.app");
-
-    const { getAppUrl } = await import("@/lib/env");
-
-    expect(getAppUrl()).toBe("https://padeljarto-git-main-example.vercel.app");
-  });
-
-  it("uses localhost only when no public or Vercel URL is available", async () => {
-    const { getAppUrl } = await import("@/lib/env");
-
-    expect(getAppUrl()).toBe("http://localhost:3000");
+  it('throws a readable error when a required var is missing', async () => {
+    vi.stubEnv('NEXT_PUBLIC_APP_URL', '');
+    const { getServerEnv } = await import('../env');
+    expect(() => getServerEnv()).toThrow(/NEXT_PUBLIC_APP_URL/);
   });
 });

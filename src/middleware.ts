@@ -1,49 +1,49 @@
-import { type NextRequest, NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from 'next/server';
+import { updateSession } from '@/lib/supabase/middleware';
 
-export function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
+function generateNonce(): string {
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  return btoa(String.fromCharCode(...bytes));
+}
 
-  // Skip middleware for static assets, API routes, and auth routes
-  if (
-    pathname.startsWith("/_next") ||
-    pathname.startsWith("/api") ||
-    pathname.startsWith("/auth") ||
-    pathname === "/favicon.ico" ||
-    pathname === "/manifest.json" ||
-    pathname === "/sw.js"
-  ) {
-    return NextResponse.next();
-  }
+function applySecurityHeaders(response: NextResponse, nonce: string): NextResponse {
+  const csp = [
+    `default-src 'self'`,
+    `script-src 'self' 'nonce-${nonce}'`,
+    `style-src 'self' 'unsafe-inline'`,
+    `img-src 'self' data: https:`,
+    `font-src 'self'`,
+    `connect-src 'self' https://*.supabase.co wss://*.supabase.co`,
+    `frame-src 'none'`,
+    `object-src 'none'`,
+    `base-uri 'self'`,
+  ].join('; ');
 
-  // Public pages that don't need auth
-  const publicPaths = ["/", "/login", "/t", "/invite"];
-  const isPublic = publicPaths.some(
-    (p) => pathname === p || pathname.startsWith(`${p}/`),
-  );
+  response.headers.set('content-security-policy', csp);
+  response.headers.set('x-nonce', nonce);
+  response.headers.set('x-content-type-options', 'nosniff');
+  response.headers.set('referrer-policy', 'strict-origin-when-cross-origin');
+  response.headers.set('x-frame-options', 'DENY');
+  return response;
+}
 
-  if (isPublic) {
-    return NextResponse.next();
-  }
+export async function middleware(request: NextRequest): Promise<NextResponse> {
+  const nonce = generateNonce();
 
-  // For /app/* routes, check for session cookie
-  // The actual auth validation happens in requireCurrentUser();
-  // this middleware provides a fast redirect for obvious no-session cases.
-  const hasSession =
-    request.cookies.has("sb-access-token") ||
-    request.cookies.has("sb-refresh-token") ||
-    request.cookies.has("padeljarto-demo-session") ||
-    // Supabase SSR stores auth in cookies with project-specific prefixes
-    [...request.cookies.getAll()].some((c) => c.name.includes("auth-token"));
+  const supabaseConfigured =
+    process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-  if (!hasSession && pathname.startsWith("/app")) {
-    const loginUrl = new URL("/login", request.url);
-    loginUrl.searchParams.set("next", pathname);
-    return NextResponse.redirect(loginUrl);
-  }
+  const response = supabaseConfigured
+    ? await updateSession(request)
+    : NextResponse.next({ request });
 
-  return NextResponse.next();
+  return applySecurityHeaders(response, nonce);
 }
 
 export const config = {
-  matcher: ["/app/:path*"],
+  matcher: [
+    // Exclude static assets and the service worker.
+    '/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|sw.js|.*\\.(?:png|jpg|svg|webp|ico)$).*)',
+  ],
 };

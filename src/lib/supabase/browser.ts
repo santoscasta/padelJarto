@@ -1,12 +1,8 @@
-"use client";
+import { createBrowserClient } from '@supabase/ssr';
 
-import { createBrowserClient } from "@supabase/ssr";
-import { env, hasSupabaseAuth } from "@/lib/env";
-
-export function createSupabaseBrowserClient() {
-  if (!hasSupabaseAuth || !env.publicSupabaseUrl || !env.publicSupabaseAnonKey) {
-    return null;
-  }
-
-  return createBrowserClient(env.publicSupabaseUrl, env.publicSupabaseAnonKey);
+export function createBrowserSupabase() {
+  return createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  );
 }

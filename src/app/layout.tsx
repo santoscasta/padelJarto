@@ -1,80 +1,30 @@
-import type { Metadata, Viewport } from "next";
-import { Bricolage_Grotesque, IBM_Plex_Mono, Manrope } from "next/font/google";
-import { getAppUrl } from "@/lib/env";
-import { PwaRegister } from "@/components/pwa-register";
-import "./globals.css";
-
-const manrope = Manrope({
-  subsets: ["latin"],
-  variable: "--font-manrope",
-});
-
-const bricolage = Bricolage_Grotesque({
-  subsets: ["latin"],
-  variable: "--font-bricolage",
-});
-
-const mono = IBM_Plex_Mono({
-  subsets: ["latin"],
-  variable: "--font-ibm-mono",
-  weight: ["400", "500"],
-});
-
-const appUrl = getAppUrl();
-
-export const viewport: Viewport = {
-  themeColor: "#f97316",
-};
+import type { Metadata, Viewport } from 'next';
+import { headers } from 'next/headers';
+import '../styles/global.css';
+import { ServiceWorkerRegister } from '@/components/pwa/ServiceWorkerRegister';
 
 export const metadata: Metadata = {
-  metadataBase: new URL(appUrl),
-  title: {
-    default: "PadelFlow",
-    template: "%s | PadelFlow",
-  },
-  description: "Gestión de torneos de pádel con liguilla, playoffs, invitaciones y parejas.",
-  applicationName: "PadelFlow",
-  manifest: "/manifest.json",
-  alternates: {
-    canonical: "/",
-  },
-  openGraph: {
-    title: "PadelFlow",
-    description: "Gestión de torneos de pádel con liguilla, playoffs, invitaciones y parejas.",
-    locale: "es_ES",
-    siteName: "PadelFlow",
-    type: "website",
-    url: "/",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "PadelFlow",
-    description: "Gestión de torneos de pádel con liguilla, playoffs, invitaciones y parejas.",
-  },
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "black-translucent",
-    title: "PadelFlow",
-  },
+  title: 'Padeljarto',
+  description: 'Torneos de padel entre amigos',
+  applicationName: 'Padeljarto',
+  manifest: '/manifest.webmanifest',
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export const viewport: Viewport = {
+  themeColor: '#0f766e',
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+};
+
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const nonce = (await headers()).get('x-nonce') ?? undefined;
+  void nonce;
   return (
-    <html
-      lang="es"
-      className={`${manrope.variable} ${bricolage.variable} ${mono.variable} h-full antialiased`}
-    >
-      <head>
-        <meta name="mobile-web-app-capable" content="yes" />
-        <link rel="apple-touch-icon" href="/icon.svg" />
-      </head>
-      <body className="min-h-full bg-[#110d0c] text-[#fff7ed]">
+    <html lang="es">
+      <body>
         {children}
-        <PwaRegister />
+        <ServiceWorkerRegister />
       </body>
     </html>
   );

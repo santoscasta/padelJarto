@@ -1,16 +1,19 @@
-import { redirect } from "next/navigation";
-import { sanitizeNextPath } from "@/lib/safe-next-path";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { NextResponse, type NextRequest } from 'next/server';
+import { createServerSupabase } from '@/lib/supabase/server';
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   const url = new URL(request.url);
-  const code = url.searchParams.get("code");
-  const nextPath = sanitizeNextPath(url.searchParams.get("next"));
-  const supabase = await createSupabaseServerClient();
+  const code = url.searchParams.get('code');
+  const next = url.searchParams.get('next') ?? '/app';
 
-  if (code && supabase) {
-    await supabase.auth.exchangeCodeForSession(code);
+  if (!code) {
+    return NextResponse.redirect(new URL('/login?error=missing_code', request.url));
   }
 
-  redirect(nextPath);
+  const supabase = await createServerSupabase();
+  const { error } = await supabase.auth.exchangeCodeForSession(code);
+  if (error) {
+    return NextResponse.redirect(new URL('/login?error=exchange_failed', request.url));
+  }
+  return NextResponse.redirect(new URL(next, request.url));
 }

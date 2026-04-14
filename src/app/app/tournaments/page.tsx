@@ -1,42 +1,47 @@
-import Link from "next/link";
-import { Plus } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { requireCurrentUser } from "@/lib/auth/session";
+import Link from 'next/link';
+import { Card, CardHeader, CardTitle } from '@/components/ui/Card';
+import { Badge } from '@/components/ui/Badge';
+import { Button } from '@/components/ui/Button';
+import { getRepo } from '@/lib/repositories/provider';
+
+const STATUS_TONE = {
+  draft: 'neutral', open: 'accent', groups: 'ok', knockout: 'warn', complete: 'neutral',
+} as const;
 
 export default async function TournamentsPage() {
-  const _currentUser = await requireCurrentUser();
-
+  const repo = await getRepo();
+  const tournaments = await repo.listTournaments();
   return (
-    <div className="grid gap-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-xs uppercase tracking-[0.2em] text-[#fdba74]">Torneos</p>
-          <h1 className="mt-1 font-[family:var(--font-display)] text-3xl tracking-tight">
-            Mis torneos
-          </h1>
-        </div>
-        <Button asChild variant="primary">
-          <Link href="/app/tournaments/new">
-            <Plus className="mr-2 size-4" />
-            Nuevo torneo
-          </Link>
-        </Button>
-      </div>
-
-      <Card>
-        <p className="text-sm text-[#d6d3d1]">
-          Aquí aparecerán tus torneos con formato de liguilla, playoff o mixto.
-        </p>
-        <div className="mt-4">
-          <Button asChild variant="primary">
-            <Link href="/app/tournaments/new">
-              <Plus className="mr-2 size-4" />
-              Crear primer torneo
-            </Link>
-          </Button>
-        </div>
-      </Card>
-    </div>
+    <section className="space-y-4">
+      <CardHeader>
+        <CardTitle>Torneos</CardTitle>
+        <Button asChild size="sm"><Link href="/app/tournaments/new">Nuevo</Link></Button>
+      </CardHeader>
+      {tournaments.length === 0 ? (
+        <Card>
+          <p className="text-sm text-[color:var(--color-ink-soft)]">Aún no hay torneos. Crea el primero.</p>
+        </Card>
+      ) : (
+        <ul className="space-y-3">
+          {tournaments.map((t) => (
+            <li key={t.id}>
+              <Link href={`/app/tournaments/${t.id}`}>
+                <Card className="hover:ring-2 hover:ring-[color:var(--color-accent)]/40 transition">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-base font-semibold">{t.name}</p>
+                      <p className="text-xs text-[color:var(--color-ink-soft)]">
+                        {t.size} parejas · {t.groupCount === 1 ? 'grupo único' : `${t.groupCount} grupos`} · play-off top {t.playoffCutoff}
+                      </p>
+                    </div>
+                    <Badge tone={STATUS_TONE[t.status]}>{t.status}</Badge>
+                  </div>
+                </Card>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }

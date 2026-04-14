@@ -40,3 +40,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# superpowers brainstorming artifacts (visual companion)
+.superpowers/
+
+# claude-code worktree scratch
+.claude/worktrees/
