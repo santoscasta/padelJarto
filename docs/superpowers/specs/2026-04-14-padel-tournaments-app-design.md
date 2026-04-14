@@ -35,7 +35,9 @@ Incluye:
   - `pre_inscribed` — jugadores se inscriben con su pareja ya elegida.
   - `draw` — todos se inscriben solos, las parejas se sortean al cerrar inscripciones.
   - `mixed` — combinación: algunos llegan con pareja, otros se apuntan solos y se emparejan.
-- **Bracket**: grupos round-robin + eliminatorias (R32/R16/QF/SF/F según nº de parejas).
+- **Bracket**: dos formatos soportados, el organizador elige por torneo:
+  - **Multi-grupo** — varios grupos round-robin + eliminatorias (R32/R16/QF/SF/F según nº de parejas).
+  - **Grupo único** — un solo grupo donde todas las parejas juegan entre sí (round-robin completo); luego play-off configurable sobre los top N del grupo (p. ej. 6 parejas → top 4 → SF+F; 8 parejas → top 4 → SF+F o top 2 → F directa).
 - **Reporte y validación de resultados**: jugador involucrado reporta set-by-set; organizador valida.
 - **Ranking continuo** doble (jugadores + parejas) con ELO adaptado a 2v2.
 - **Invitaciones por link compartible** (token 32 chars, expiración 7 días).
@@ -132,9 +134,13 @@ Canónica por orden lexicográfico `player_a_id < player_b_id`.
 - `name TEXT NOT NULL`
 - `status tournament_status NOT NULL DEFAULT 'draft'`  — enum (`draft`, `open`, `groups`, `knockout`, `complete`)
 - `pairing_mode pairing_mode NOT NULL` — enum (`pre_inscribed`, `draw`, `mixed`)
-- `size INT NOT NULL` — número de parejas objetivo (8/16/32)
+- `size INT NOT NULL` — número de parejas objetivo
+- `group_count INT NOT NULL DEFAULT 1` — `1` = grupo único todos-vs-todos; `>1` = multi-grupo
+- `playoff_cutoff INT NOT NULL` — cuántas parejas avanzan al play-off en total (p. ej. `1` = solo campeón del grupo único sin play-off; `2` = final directa; `4` = SF+F; `8` = QF+SF+F; `16` = R16+…). En multi-grupo se distribuye por grupos (top `playoff_cutoff / group_count` de cada uno).
 - `starts_at TIMESTAMPTZ`
 - `created_at TIMESTAMPTZ DEFAULT now()`
+- `CHECK (playoff_cutoff IN (0, 1, 2, 4, 8, 16))`
+- `CHECK (group_count >= 1 AND size % group_count = 0)`
 
 ### inscriptions
 
@@ -277,6 +283,8 @@ export type Tournament = Readonly<{
   status: TournamentStatus;
   pairingMode: PairingMode;
   size: number;
+  groupCount: number;      // 1 = grupo único; >1 = multi-grupo
+  playoffCutoff: number;   // 0 | 1 | 2 | 4 | 8 | 16
   startsAt: string | null;
 }>;
 
@@ -333,9 +341,10 @@ export type ErrorCode =
 ### Funciones puras clave
 
 - `domain/pairing.ts::drawPairs(singles, seed)` — empareja jugadores sueltos balanceando por rating. Determinista con seed.
-- `domain/bracket.ts::generateGroups(pairs, groupCount)` — reparte parejas en grupos balanceados por rating medio.
+- `domain/bracket.ts::generateGroups(pairs, groupCount)` — reparte parejas en grupos balanceados por rating medio. Si `groupCount === 1`, devuelve un único grupo con todas las parejas.
 - `domain/bracket.ts::generateRoundRobinMatches(groupPairs)` — todos contra todos dentro de un grupo.
-- `domain/bracket.ts::seedKnockout(qualified)` — empareja 1A vs 2B, 1B vs 2A, …
+- `domain/bracket.ts::seedKnockout(qualified, cutoff)` — empareja según clasificación. En multi-grupo: 1A vs 2B, 1B vs 2A, … En grupo único: 1 vs `cutoff`, 2 vs `cutoff-1`, …
+- `domain/bracket.ts::knockoutPhaseFor(cutoff): MatchPhase` — mapea `cutoff → phase` inicial (`2→F`, `4→SF`, `8→QF`, `16→R16`).
 - `domain/result.ts::validateSets(sets)` — Zod + reglas (6-X con X<5 o 7-5 o 7-6, mejor de 3).
 - `domain/rating.ts::applyRating(match, currentRatings)` — devuelve 6 snapshots (4 jugadores + 2 parejas) y los nuevos ratings.
 - `domain/standings.ts::computeStandings(group, matches)` — ordena parejas por (victorias, diff sets, diff games, enfrentamiento directo).
@@ -390,11 +399,12 @@ export type ErrorCode =
 
 ### Flujo 5 — De grupos a eliminatorias
 
-1. Cuando todos los matches de grupo están `validated`:
+1. Cuando todos los matches de fase de grupos están `validated`:
    - `computeStandings(group, matches)` por cada grupo.
-   - Top 2 de cada grupo clasifica.
-2. `seedKnockout(qualified)` → empareja 1A vs 2B, …
-3. Batch insert matches (phase = R16 / QF según nº).
+   - **Multi-grupo**: top `playoff_cutoff / group_count` de cada grupo clasifica.
+   - **Grupo único**: top `playoff_cutoff` del grupo clasifica. Si `playoff_cutoff = 1`, el torneo termina sin play-off (campeón = primero del grupo) y `status = 'complete'`.
+2. `seedKnockout(qualified, playoff_cutoff)` → empareja según formato.
+3. Batch insert matches en la fase correspondiente (`knockoutPhaseFor(cutoff)`).
 4. `tournament.status = 'knockout'`.
 5. Cuando gana la final → `status = 'complete'`.
 
@@ -580,8 +590,8 @@ supabase/
 
 ## 11. Decisiones pendientes
 
-- **Número de grupos por tamaño de torneo**: asumido 4 grupos de 4 para 16 parejas, 8 grupos de 4 para 32, 2 grupos de 4 para 8. Confirmar.
-- **¿Permitir 12 parejas?** Asumido no (solo 8/16/32); pedir si hace falta.
+- **Tamaños de torneo permitidos**: asumido rango flexible (`size` libre con la única restricción `size % group_count = 0`). Ej. válidos: 6 parejas en grupo único top 4, 12 parejas en 3 grupos de 4 top 2, 8/16/32 clásicos. Confirmar si queremos limitarlo o dejarlo abierto.
+- **Presets de wizard de creación**: ofreceremos presets ("Grupo único 6 parejas → SF", "Multi-grupo 16 → QF", etc.) más la opción "custom" con `size`, `group_count`, `playoff_cutoff` editables. Confirmar lista de presets.
 - **Notificaciones dentro de la app** además de email: asumido sí (`notifications` table), con badge en header. Confirmar si se quiere mostrar en UI desde V1 o solo la persistencia.
 - **Idioma de la UI**: asumido español (coincide con la conversación).
 
