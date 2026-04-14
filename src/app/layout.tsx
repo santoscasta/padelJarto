@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next';
+import { headers } from 'next/headers';
 import '../styles/global.css';
 import { ServiceWorkerRegister } from '@/components/pwa/ServiceWorkerRegister';
 
@@ -16,7 +17,9 @@ export const viewport: Viewport = {
   viewportFit: 'cover',
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const nonce = (await headers()).get('x-nonce') ?? undefined;
+  void nonce;
   return (
     <html lang="es">
       <body>
