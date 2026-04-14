@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { Suspense } from 'react';
 import { BottomNav } from '@/components/shell/BottomNav';
 import { NotificationBell } from '@/components/shell/NotificationBell';
+import { InstallPrompt } from '@/components/pwa/InstallPrompt';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -15,6 +16,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
       </header>
       <main className="mx-auto max-w-xl px-4 py-6">{children}</main>
+      <InstallPrompt />
       <BottomNav />
     </div>
   );
