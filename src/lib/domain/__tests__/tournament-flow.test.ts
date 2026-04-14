@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { Session } from '@/lib/auth/session';
 import { InMemoryRepository } from '@/lib/repositories/in-memory-repository';
 import { __setRepoFactoryForTests } from '@/lib/repositories/provider';
 
-const sessionMock = vi.hoisted(() => ({ current: null as any }));
+const sessionMock = vi.hoisted(() => ({ current: null as Session | null }));
 
 vi.mock('@/lib/auth/session', () => ({
   requireSession: async () => {
@@ -49,7 +50,7 @@ describe('createTournamentAction', () => {
     const res = await createTournamentAction({
       name: 'Bad', pairingMode: 'draw',
       size: 8, groupCount: 2, playoffCutoff: 5, startsAt: null,
-    } as any);
+    } as unknown as Parameters<typeof createTournamentAction>[0]);
     expect(res.ok).toBe(false);
     if (!res.ok) expect(res.code).toBe('VALIDATION_FAILED');
   });
