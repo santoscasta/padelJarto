@@ -6,6 +6,13 @@ import { getSession } from '@/lib/auth/session';
 import { getRepo } from '@/lib/repositories/provider';
 import { InviteForm } from './InviteForm';
 
+// Wrapping the impure time read in a helper keeps `InvitePage` body free of
+// direct `Date.now()` calls, which the `react-hooks/purity` rule flags even in
+// async server components (where render replays do not apply).
+function isExpired(expiresAtIso: string): boolean {
+  return new Date(expiresAtIso).getTime() < new Date().getTime();
+}
+
 export default async function InvitePage({
   params,
 }: { params: Promise<{ token: string }> }) {
@@ -16,7 +23,7 @@ export default async function InvitePage({
   const tournament = await repo.getTournament(inv.tournamentId);
   if (!tournament) notFound();
 
-  const expired = new Date(inv.expiresAt).getTime() < Date.now();
+  const expired = isExpired(inv.expiresAt);
   const session = await getSession();
 
   return (

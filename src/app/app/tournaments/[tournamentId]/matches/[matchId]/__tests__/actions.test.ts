@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { Session } from '@/lib/auth/session';
 import { InMemoryRepository } from '@/lib/repositories/in-memory-repository';
 import { __setRepoFactoryForTests } from '@/lib/repositories/provider';
 
-const sessionMock = vi.hoisted(() => ({ current: null as any }));
+const sessionMock = vi.hoisted(() => ({ current: null as Session | null }));
 vi.mock('@/lib/auth/session', () => ({
   requireSession: async () => {
     if (!sessionMock.current) throw new Error('NOT_AUTHORIZED');

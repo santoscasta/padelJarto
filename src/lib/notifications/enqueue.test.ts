@@ -3,7 +3,10 @@ import { enqueueNotification } from './enqueue';
 import { InMemoryRepository } from '@/lib/repositories/in-memory-repository';
 
 const fetchMock = vi.fn().mockResolvedValue({ ok: true });
-beforeEach(() => { fetchMock.mockClear(); (globalThis as any).fetch = fetchMock; });
+beforeEach(() => {
+  fetchMock.mockClear();
+  (globalThis as unknown as { fetch: typeof fetch }).fetch = fetchMock as unknown as typeof fetch;
+});
 
 describe('enqueueNotification', () => {
   it('persists a notification row and calls the dispatcher endpoint', async () => {

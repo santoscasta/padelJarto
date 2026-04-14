@@ -1,4 +1,9 @@
-// @ts-nocheck - Deno runtime
+/* eslint-disable @typescript-eslint/ban-ts-comment */
+// This file runs on Supabase Edge Functions (Deno), not Node. It imports from
+// remote URLs (esm.sh) and uses the `Deno` global, neither of which the
+// Node-targeted TS/ESLint toolchain can resolve. `@ts-nocheck` is required so
+// the Node toolchain stays green; Deno type-checks this file at deploy time.
+// @ts-nocheck
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.101.1';
 import { buildPayload, type EmailPayloadInput } from '../../../src/lib/notifications/payloads.ts';
 

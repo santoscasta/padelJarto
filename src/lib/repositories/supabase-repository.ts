@@ -21,6 +21,13 @@ import type {
 
 type Clients = Readonly<{ user: SupabaseClient; admin: SupabaseClient }>;
 
+// The Supabase JS client returns rows as loosely-typed objects for dynamic
+// queries. Typing each mapper input with a full database schema duplicates
+// the Postgres definitions without adding safety — the narrowing inside each
+// mapper (coercing to Number, string fields) is the real boundary.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type SupabaseRow = any;
+
 export class SupabaseRepository implements Repository {
   constructor(private readonly clients: Clients) {}
 
@@ -108,7 +115,7 @@ export class SupabaseRepository implements Repository {
       .eq('tournament_id', tournamentId)
       .not('pair_id', 'is', null);
     if (error) throw error;
-    const pairs = (data ?? []).map((row) => row.pair).filter(Boolean) as any[];
+    const pairs = (data ?? []).map((row) => row.pair).filter(Boolean) as SupabaseRow[];
     const seen = new Set<string>();
     const unique: Pair[] = [];
     for (const p of pairs) {
@@ -229,7 +236,7 @@ export class SupabaseRepository implements Repository {
       .eq('tournament_id', tournamentId)
       .order('label', { ascending: true });
     if (error) throw error;
-    return (data ?? []).map((g: any) => ({
+    return (data ?? []).map((g: SupabaseRow) => ({
       id: g.id,
       tournamentId: g.tournament_id,
       label: g.label,
@@ -393,7 +400,7 @@ export class SupabaseRepository implements Repository {
 }
 
 // ---------- mappers ----------
-function mapPlayer(row: any): Player {
+function mapPlayer(row: SupabaseRow): Player {
   return {
     id: row.id,
     profileId: row.profile_id,
@@ -402,10 +409,10 @@ function mapPlayer(row: any): Player {
     matchesPlayed: Number(row.matches_played),
   };
 }
-function mapPair(row: any): Pair {
+function mapPair(row: SupabaseRow): Pair {
   return { id: row.id, playerAId: row.player_a_id, playerBId: row.player_b_id, rating: Number(row.rating) };
 }
-function mapTournament(row: any): Tournament {
+function mapTournament(row: SupabaseRow): Tournament {
   return {
     id: row.id, ownerId: row.owner_id, name: row.name, status: row.status,
     pairingMode: row.pairing_mode, size: row.size,
@@ -413,26 +420,26 @@ function mapTournament(row: any): Tournament {
     startsAt: row.starts_at, createdAt: row.created_at,
   };
 }
-function mapInscription(row: any): Inscription {
+function mapInscription(row: SupabaseRow): Inscription {
   return {
     id: row.id, tournamentId: row.tournament_id, playerId: row.player_id,
     pairId: row.pair_id, status: row.status,
   };
 }
-function mapInvitation(row: any): Invitation {
+function mapInvitation(row: SupabaseRow): Invitation {
   return {
     id: row.id, tournamentId: row.tournament_id, token: row.token,
     expiresAt: row.expires_at, createdBy: row.created_by, createdAt: row.created_at,
   };
 }
-function mapMatch(row: any): Match {
+function mapMatch(row: SupabaseRow): Match {
   return {
     id: row.id, tournamentId: row.tournament_id, phase: row.phase,
     groupId: row.group_id, pairAId: row.pair_a_id, pairBId: row.pair_b_id,
     court: row.court, scheduledAt: row.scheduled_at,
   };
 }
-function mapResult(row: any): Result {
+function mapResult(row: SupabaseRow): Result {
   return {
     id: row.id, matchId: row.match_id, sets: row.sets,
     winnerPairId: row.winner_pair_id, reportedBy: row.reported_by,
@@ -440,14 +447,14 @@ function mapResult(row: any): Result {
     status: row.status, correctsResultId: row.corrects_result_id,
   };
 }
-function mapSnapshot(row: any): RatingSnapshot {
+function mapSnapshot(row: SupabaseRow): RatingSnapshot {
   return {
     id: row.id, subjectType: row.subject_type, subjectId: row.subject_id,
     before: Number(row.before), after: Number(row.after), delta: Number(row.delta),
     matchId: row.match_id, resultId: row.result_id, createdAt: row.created_at,
   };
 }
-function mapNotification(row: any): Notification {
+function mapNotification(row: SupabaseRow): Notification {
   return {
     id: row.id, userId: row.user_id, kind: row.kind, payload: row.payload ?? {},
     readAt: row.read_at, createdAt: row.created_at,

@@ -26,7 +26,8 @@ describe('buildPayload', () => {
   });
 
   it('rejects unknown kind at runtime', () => {
-    expect(() => buildPayload({ kind: 'bogus' as any, tournamentName: 'x' } as any))
-      .toThrow(/unknown notification kind/i);
+    expect(() =>
+      buildPayload({ kind: 'bogus', tournamentName: 'x' } as unknown as Parameters<typeof buildPayload>[0]),
+    ).toThrow(/unknown notification kind/i);
   });
 });
