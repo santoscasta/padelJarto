@@ -11,7 +11,14 @@ export default defineConfig({
     coverage: {
       include: ["src/lib/domain/**/*.ts"],
       provider: "v8",
-      reporter: ["text", "html"],
+      reporter: ["text", "html", "json-summary"],
+      reportsDirectory: "./coverage",
+      thresholds: {
+        lines: 80,
+        functions: 80,
+        branches: 75,
+        statements: 80,
+      },
     },
     environment: "node",
     exclude: ["**/node_modules/**", "**/.next/**", "**/.claude/**"],
