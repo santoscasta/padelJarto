@@ -14,5 +14,6 @@ export default defineConfig({
       reporter: ["text", "html"],
     },
     environment: "node",
+    exclude: ["**/node_modules/**", "**/.next/**", "**/.claude/**"],
   },
 });
