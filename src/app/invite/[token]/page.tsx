@@ -1,0 +1,53 @@
+import { notFound } from 'next/navigation';
+import Link from 'next/link';
+import { Card, CardHeader, CardTitle } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
+import { getSession } from '@/lib/auth/session';
+import { getRepo } from '@/lib/repositories/provider';
+import { InviteForm } from './InviteForm';
+
+export default async function InvitePage({
+  params,
+}: { params: Promise<{ token: string }> }) {
+  const { token } = await params;
+  const repo = await getRepo();
+  const inv = await repo.getInvitationByToken(token);
+  if (!inv) notFound();
+  const tournament = await repo.getTournament(inv.tournamentId);
+  if (!tournament) notFound();
+
+  const expired = new Date(inv.expiresAt).getTime() < Date.now();
+  const session = await getSession();
+
+  return (
+    <main className="mx-auto max-w-xl px-4 py-10 space-y-6">
+      <CardHeader>
+        <CardTitle>Invitación a {tournament.name}</CardTitle>
+      </CardHeader>
+      {expired ? (
+        <Card>
+          <p className="text-sm">Esta invitación ha caducado. Pide una nueva al organizador.</p>
+        </Card>
+      ) : !session ? (
+        <Card>
+          <p className="mb-4 text-sm">Inicia sesión para unirte al torneo.</p>
+          <Button asChild>
+            <Link href={`/login?next=/invite/${token}`}>Entrar con Google</Link>
+          </Button>
+        </Card>
+      ) : tournament.status !== 'open' ? (
+        <Card>
+          <p className="text-sm">Las inscripciones aún no están abiertas (estado: {tournament.status}).</p>
+        </Card>
+      ) : (
+        <Card>
+          <InviteForm
+            token={token}
+            pairingMode={tournament.pairingMode}
+            players={(await repo.listPlayers()).filter((p) => p.id !== session.player.id).map((p) => ({ id: p.id, displayName: p.displayName }))}
+          />
+        </Card>
+      )}
+    </main>
+  );
+}
