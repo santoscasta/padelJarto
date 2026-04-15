@@ -9,6 +9,11 @@ import { getServerEnv } from '@/lib/env';
  */
 export function createAdminSupabase() {
   const env = getServerEnv();
+  if (!env.SUPABASE_SERVICE_ROLE_KEY) {
+    throw new Error(
+      'SUPABASE_SERVICE_ROLE_KEY is not configured. Set it in the server environment.',
+    );
+  }
   return createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
