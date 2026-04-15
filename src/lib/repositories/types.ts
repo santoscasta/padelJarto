@@ -54,6 +54,12 @@ export interface Repository {
   // tournaments
   createTournament(input: NewTournamentInput): Promise<Tournament>;
   getTournament(id: string): Promise<Tournament | null>;
+  /**
+   * Same as getTournament but bypasses RLS via admin client. Use only on
+   * public, token-gated entry points (e.g. /invite/[token]) where an
+   * unauthenticated visitor must still see tournament metadata.
+   */
+  getTournamentPublic(id: string): Promise<Tournament | null>;
   listTournaments(): Promise<ReadonlyArray<Tournament>>;
   updateTournamentStatus(id: string, status: TournamentStatus): Promise<Tournament>;
   updateTournamentPairingMode(id: string, pairingMode: Tournament['pairingMode']): Promise<Tournament>;

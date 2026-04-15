@@ -115,6 +115,9 @@ export class InMemoryRepository implements Repository {
   async getTournament(id: string): Promise<Tournament | null> {
     return this.tournaments.get(id) ?? null;
   }
+  async getTournamentPublic(id: string): Promise<Tournament | null> {
+    return this.tournaments.get(id) ?? null;
+  }
   async listTournaments(): Promise<ReadonlyArray<Tournament>> {
     return [...this.tournaments.values()].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }

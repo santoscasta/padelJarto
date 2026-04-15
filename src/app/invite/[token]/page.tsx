@@ -20,7 +20,10 @@ export default async function InvitePage({
   const repo = await getRepo();
   const inv = await repo.getInvitationByToken(token);
   if (!inv) notFound();
-  const tournament = await repo.getTournament(inv.tournamentId);
+  // Use the public getter so anonymous visitors (not yet logged in) can see
+  // the tournament name and login CTA. RLS on `tournaments` only allows
+  // authenticated selects, which would otherwise trip a 404 here.
+  const tournament = await repo.getTournamentPublic(inv.tournamentId);
   if (!tournament) notFound();
 
   const expired = isExpired(inv.expiresAt);

@@ -160,6 +160,13 @@ export class SupabaseRepository implements Repository {
     return data ? mapTournament(data) : null;
   }
 
+  async getTournamentPublic(id: string): Promise<Tournament | null> {
+    const { data, error } = await this.admin
+      .from('tournaments').select('*').eq('id', id).maybeSingle();
+    if (error) throw error;
+    return data ? mapTournament(data) : null;
+  }
+
   async listTournaments(): Promise<ReadonlyArray<Tournament>> {
     const { data, error } = await this.db
       .from('tournaments').select('*').order('created_at', { ascending: false });
