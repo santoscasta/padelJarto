@@ -28,7 +28,7 @@ function applySecurityHeaders(response: NextResponse, nonce: string): NextRespon
   return response;
 }
 
-export async function middleware(request: NextRequest): Promise<NextResponse> {
+export async function proxy(request: NextRequest): Promise<NextResponse> {
   const nonce = generateNonce();
 
   const supabaseConfigured =

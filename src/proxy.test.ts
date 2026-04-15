@@ -1,11 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import { NextRequest } from 'next/server';
-import { middleware } from './middleware';
+import { proxy } from './proxy';
 
-describe('middleware CSP', () => {
+describe('proxy CSP', () => {
   it('sets a CSP header with a per-request nonce', async () => {
     const req = new NextRequest('https://padeljarto.app/');
-    const res = await middleware(req);
+    const res = await proxy(req);
     const csp = res.headers.get('content-security-policy');
     expect(csp).toBeTruthy();
     expect(csp!).toMatch(/'nonce-[A-Za-z0-9+/=_-]+'/);
@@ -16,7 +16,7 @@ describe('middleware CSP', () => {
 
   it('exposes the nonce on the response header for layout consumption', async () => {
     const req = new NextRequest('https://padeljarto.app/');
-    const res = await middleware(req);
+    const res = await proxy(req);
     const nonce = res.headers.get('x-nonce');
     expect(nonce).toMatch(/^[A-Za-z0-9+/=_-]+$/);
   });
