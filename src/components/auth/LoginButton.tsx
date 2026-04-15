@@ -6,17 +6,36 @@ import { createBrowserSupabase } from '@/lib/supabase/browser';
 
 type Status =
   | { kind: 'idle' }
+  | { kind: 'google' }
   | { kind: 'sending' }
   | { kind: 'sent'; email: string }
   | { kind: 'error'; message: string };
 
-// Named `LoginButton` for backwards-compatible import paths. Renders a
-// magic-link email form: Supabase sends a one-time link to the address,
-// which redirects to /auth/callback?code=... where the existing handler
-// exchanges the code for a session cookie.
+// Named `LoginButton` for backwards-compatible import paths. Offers two sign-in
+// paths that both land on /auth/callback?code=... for the session exchange:
+//   1) Google OAuth via Supabase (primary) — one click, no inbox roundtrip.
+//   2) Magic-link email (fallback) — works when Google OAuth isn't configured
+//      or the user prefers email.
 export function LoginButton({ next = '/app' }: { next?: string }) {
   const [email, setEmail] = useState('');
   const [status, setStatus] = useState<Status>({ kind: 'idle' });
+
+  function redirectTo(): string {
+    return `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`;
+  }
+
+  async function onGoogleClick() {
+    setStatus({ kind: 'google' });
+    const supabase = createBrowserSupabase();
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: redirectTo() },
+    });
+    if (error) {
+      setStatus({ kind: 'error', message: error.message });
+    }
+    // On success the browser is redirected to Google, so no state update here.
+  }
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -25,10 +44,9 @@ export function LoginButton({ next = '/app' }: { next?: string }) {
 
     setStatus({ kind: 'sending' });
     const supabase = createBrowserSupabase();
-    const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`;
     const { error } = await supabase.auth.signInWithOtp({
       email: trimmed,
-      options: { emailRedirectTo: redirectTo },
+      options: { emailRedirectTo: redirectTo() },
     });
     if (error) {
       setStatus({ kind: 'error', message: error.message });
@@ -55,29 +73,56 @@ export function LoginButton({ next = '/app' }: { next?: string }) {
     );
   }
 
+  const busy = status.kind === 'google' || status.kind === 'sending';
+
   return (
-    <form onSubmit={onSubmit} className="space-y-3 text-left">
-      <label htmlFor="login-email" className="block text-sm">
-        Email
-      </label>
-      <Input
-        id="login-email"
-        type="email"
-        autoComplete="email"
-        required
-        placeholder="tu@email.com"
-        value={email}
-        onChange={(event) => setEmail(event.target.value)}
-        disabled={status.kind === 'sending'}
-      />
-      <Button type="submit" size="lg" disabled={status.kind === 'sending' || !email.trim()}>
-        {status.kind === 'sending' ? 'Enviando...' : 'Enviar enlace de acceso'}
+    <div className="space-y-4 text-left">
+      <Button
+        type="button"
+        size="lg"
+        onClick={onGoogleClick}
+        disabled={busy}
+        className="w-full"
+      >
+        {status.kind === 'google' ? 'Redirigiendo...' : 'Entrar con Google'}
       </Button>
+
+      <div className="flex items-center gap-3 text-xs text-[color:var(--color-ink-soft)]">
+        <span className="h-px flex-1 bg-black/10" />
+        <span>o con email</span>
+        <span className="h-px flex-1 bg-black/10" />
+      </div>
+
+      <form onSubmit={onSubmit} className="space-y-3">
+        <label htmlFor="login-email" className="block text-sm">
+          Email
+        </label>
+        <Input
+          id="login-email"
+          type="email"
+          autoComplete="email"
+          required
+          placeholder="tu@email.com"
+          value={email}
+          onChange={(event) => setEmail(event.target.value)}
+          disabled={busy}
+        />
+        <Button
+          type="submit"
+          size="lg"
+          variant="secondary"
+          disabled={busy || !email.trim()}
+          className="w-full"
+        >
+          {status.kind === 'sending' ? 'Enviando...' : 'Enviar enlace de acceso'}
+        </Button>
+      </form>
+
       {status.kind === 'error' ? (
         <p className="text-sm text-red-600" role="alert">
           {status.message}
         </p>
       ) : null}
-    </form>
+    </div>
   );
 }
