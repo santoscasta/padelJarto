@@ -34,9 +34,19 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
   const supabaseConfigured =
     process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-  const response = supabaseConfigured
-    ? await updateSession(request)
-    : NextResponse.next({ request });
+  // The middleware runs on every request, so a throw here takes down the whole
+  // app (including /login). Fall back to a plain passthrough — the individual
+  // route handlers surface meaningful errors themselves.
+  let response: NextResponse;
+  try {
+    response = supabaseConfigured
+      ? await updateSession(request)
+      : NextResponse.next({ request });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'unknown';
+    console.error('[middleware] updateSession failed:', message);
+    response = NextResponse.next({ request });
+  }
 
   return applySecurityHeaders(response, nonce);
 }
