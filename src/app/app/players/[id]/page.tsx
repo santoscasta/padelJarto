@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
+import { Avatar } from '@/components/ui/Avatar';
 import { getRepo } from '@/lib/repositories/provider';
 
 export default async function PlayerProfilePage({
@@ -17,7 +18,10 @@ export default async function PlayerProfilePage({
   return (
     <section className="space-y-4">
       <CardHeader>
-        <CardTitle>{player.displayName}</CardTitle>
+        <div className="flex items-center gap-3">
+          <Avatar src={player.avatarUrl} name={player.displayName} size="lg" />
+          <CardTitle>{player.displayName}</CardTitle>
+        </div>
         <Badge tone="accent">{Math.round(player.rating)}</Badge>
       </CardHeader>
       <Card>

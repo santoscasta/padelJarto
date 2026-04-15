@@ -15,11 +15,20 @@ export async function getSession(): Promise<Session | null> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
 
+  const meta = (user.user_metadata ?? {}) as Record<string, unknown>;
+  const displayName =
+    (typeof meta.full_name === 'string' && meta.full_name) ||
+    (typeof meta.name === 'string' && meta.name) ||
+    user.email?.split('@')[0] ||
+    'Jugador';
+  // Google returns the profile picture under either key; grab whichever is present.
+  const avatarUrl =
+    (typeof meta.avatar_url === 'string' && meta.avatar_url) ||
+    (typeof meta.picture === 'string' && meta.picture) ||
+    null;
+
   const repo = new SupabaseRepository({ user: supabase, admin: createAdminSupabase() });
-  const player = await repo.ensurePlayerForProfile(
-    user.id,
-    user.user_metadata?.full_name ?? user.user_metadata?.name ?? user.email?.split('@')[0] ?? 'Jugador',
-  );
+  const player = await repo.ensurePlayerForProfile(user.id, displayName, avatarUrl);
   return {
     userId: user.id,
     email: user.email ?? null,

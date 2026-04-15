@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import { Avatar } from '@/components/ui/Avatar';
 import { requireSession } from '@/lib/auth/session';
 import { getRepo } from '@/lib/repositories/provider';
 
@@ -12,11 +13,14 @@ export default async function AppHomePage() {
 
   return (
     <div className="space-y-6">
-      <section>
-        <p className="text-sm text-[color:var(--color-ink-soft)]">Hola,</p>
-        <h1 className="text-[length:var(--text-display)] font-semibold tracking-tight">
-          {session.displayName}
-        </h1>
+      <section className="flex items-center gap-4">
+        <Avatar src={session.player.avatarUrl} name={session.displayName} size="lg" />
+        <div>
+          <p className="text-sm text-[color:var(--color-ink-soft)]">Hola,</p>
+          <h1 className="text-[length:var(--text-display)] font-semibold tracking-tight">
+            {session.displayName}
+          </h1>
+        </div>
       </section>
 
       <section className="grid gap-3">

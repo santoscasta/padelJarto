@@ -16,6 +16,7 @@ export type Player = Readonly<{
   id: string;
   profileId: string;
   displayName: string;
+  avatarUrl: string | null;
   rating: number;
   matchesPlayed: number;
 }>;

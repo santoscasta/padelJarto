@@ -3,7 +3,7 @@ import { applyRating, expectedScore } from '../rating';
 import type { Match, Pair, Player, Result } from '../types';
 
 const player = (id: string, rating: number, matchesPlayed = 20): Player => ({
-  id, profileId: `p-${id}`, displayName: id, rating, matchesPlayed,
+  id, profileId: `p-${id}`, displayName: id, avatarUrl: null, rating, matchesPlayed,
 });
 const pair = (id: string, a: string, b: string, rating: number): Pair => ({
   id, playerAId: a, playerBId: b, rating,

@@ -41,7 +41,11 @@ export type ValidateResultInput = Readonly<{
 export interface Repository {
   // profiles / players
   getPlayerByProfileId(profileId: string): Promise<Player | null>;
-  ensurePlayerForProfile(profileId: string, displayName: string): Promise<Player>;
+  ensurePlayerForProfile(
+    profileId: string,
+    displayName: string,
+    avatarUrl?: string | null,
+  ): Promise<Player>;
   listPlayers(): Promise<ReadonlyArray<Player>>;
   getPlayer(id: string): Promise<Player | null>;
 

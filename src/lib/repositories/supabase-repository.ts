@@ -38,7 +38,7 @@ export class SupabaseRepository implements Repository {
   async getPlayerByProfileId(profileId: string): Promise<Player | null> {
     const { data, error } = await this.db
       .from('players')
-      .select('id, profile_id, rating, matches_played, profiles(display_name)')
+      .select('id, profile_id, rating, matches_played, profiles(display_name, avatar_url)')
       .eq('profile_id', profileId)
       .maybeSingle();
     if (error) throw error;
@@ -46,24 +46,51 @@ export class SupabaseRepository implements Repository {
     return mapPlayer(data);
   }
 
-  async ensurePlayerForProfile(profileId: string, displayName: string): Promise<Player> {
+  async ensurePlayerForProfile(
+    profileId: string,
+    displayName: string,
+    avatarUrl?: string | null,
+  ): Promise<Player> {
+    // Refresh the Google avatar on every session so it stays in sync with the
+    // provider. Only updates if the caller actually has a URL to offer.
+    if (avatarUrl) {
+      const { error: avatarError } = await this.admin
+        .from('profiles')
+        .update({ avatar_url: avatarUrl })
+        .eq('id', profileId);
+      if (avatarError) {
+        // Non-fatal: a stale avatar shouldn't block login.
+        console.warn('[supabase-repo] avatar sync failed:', avatarError.message);
+      }
+    }
+
     const existing = await this.getPlayerByProfileId(profileId);
-    if (existing) return existing;
+    if (existing) {
+      // If the cached Player row was fetched before the avatar update above,
+      // splice the fresh URL in so callers don't see a stale value.
+      return avatarUrl && existing.avatarUrl !== avatarUrl
+        ? { ...existing, avatarUrl }
+        : existing;
+    }
+
     // The trigger normally creates this, but if the profile already exists without
     // a player (e.g. historical data), insert defensively via the admin client.
     const { data, error } = await this.admin
       .from('players')
       .insert({ profile_id: profileId })
-      .select('id, profile_id, rating, matches_played, profiles(display_name)')
+      .select('id, profile_id, rating, matches_played, profiles(display_name, avatar_url)')
       .single();
     if (error) throw error;
-    return mapPlayer({ ...data, profiles: { display_name: displayName } });
+    return mapPlayer({
+      ...data,
+      profiles: { display_name: displayName, avatar_url: avatarUrl ?? null },
+    });
   }
 
   async listPlayers(): Promise<ReadonlyArray<Player>> {
     const { data, error } = await this.db
       .from('players')
-      .select('id, profile_id, rating, matches_played, profiles(display_name)')
+      .select('id, profile_id, rating, matches_played, profiles(display_name, avatar_url)')
       .order('rating', { ascending: false });
     if (error) throw error;
     return (data ?? []).map(mapPlayer);
@@ -72,7 +99,7 @@ export class SupabaseRepository implements Repository {
   async getPlayer(id: string): Promise<Player | null> {
     const { data, error } = await this.db
       .from('players')
-      .select('id, profile_id, rating, matches_played, profiles(display_name)')
+      .select('id, profile_id, rating, matches_played, profiles(display_name, avatar_url)')
       .eq('id', id)
       .maybeSingle();
     if (error) throw error;
@@ -461,6 +488,7 @@ function mapPlayer(row: SupabaseRow): Player {
     id: row.id,
     profileId: row.profile_id,
     displayName: row.profiles?.display_name ?? 'Jugador',
+    avatarUrl: row.profiles?.avatar_url ?? null,
     rating: Number(row.rating),
     matchesPlayed: Number(row.matches_played),
   };

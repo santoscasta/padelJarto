@@ -3,7 +3,7 @@ import { drawPairs } from '../pairing';
 import type { Player } from '../types';
 
 const P = (id: string, r: number): Player => ({
-  id, profileId: `pro-${id}`, displayName: id, rating: r, matchesPlayed: 20,
+  id, profileId: `pro-${id}`, displayName: id, avatarUrl: null, rating: r, matchesPlayed: 20,
 });
 
 describe('drawPairs', () => {

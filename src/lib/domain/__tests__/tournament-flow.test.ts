@@ -23,7 +23,7 @@ describe('createTournamentAction', () => {
       userId: 'owner-profile',
       email: 'o@x.com',
       displayName: 'Owner',
-      player: { id: 'player-owner', profileId: 'owner-profile', displayName: 'Owner', rating: 1200, matchesPlayed: 0 },
+      player: { id: 'player-owner', profileId: 'owner-profile', displayName: 'Owner', avatarUrl: null, rating: 1200, matchesPlayed: 0 },
     };
   });
 

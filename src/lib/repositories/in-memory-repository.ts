@@ -53,11 +53,27 @@ export class InMemoryRepository implements Repository {
     const id = this.profiles.get(profileId);
     return id ? this.players.get(id) ?? null : null;
   }
-  async ensurePlayerForProfile(profileId: string, displayName: string): Promise<Player> {
+  async ensurePlayerForProfile(
+    profileId: string,
+    displayName: string,
+    avatarUrl: string | null = null,
+  ): Promise<Player> {
     const existing = await this.getPlayerByProfileId(profileId);
-    if (existing) return existing;
+    if (existing) {
+      if (avatarUrl && existing.avatarUrl !== avatarUrl) {
+        const next: Player = { ...existing, avatarUrl };
+        this.players.set(next.id, next);
+        return next;
+      }
+      return existing;
+    }
     const p: Player = {
-      id: randomUUID(), profileId, displayName, rating: ELO_BASE, matchesPlayed: 0,
+      id: randomUUID(),
+      profileId,
+      displayName,
+      avatarUrl,
+      rating: ELO_BASE,
+      matchesPlayed: 0,
     };
     this.players.set(p.id, p);
     this.profiles.set(profileId, p.id);
