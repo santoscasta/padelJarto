@@ -1,12 +1,12 @@
 @import "./tokens.css";
 
 :root {
-  color-scheme: light;
+  color-scheme: dark;
 }
 
 html, body { height: 100%; }
 body {
-  background: var(--color-surface);
+  background: var(--color-bg);
   color: var(--color-ink);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
@@ -14,6 +14,25 @@ body {
 }
 
 *, *::before, *::after { box-sizing: border-box; }
+
+::selection {
+  background: var(--color-accent);
+  color: var(--color-accent-ink);
+}
+
+/* Subtle scrollbar that fits the dark theme */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-line) transparent;
+}
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb {
+  background: var(--color-line);
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

@@ -57,15 +57,15 @@ export function LoginButton({ next = '/app' }: { next?: string }) {
 
   if (status.kind === 'sent') {
     return (
-      <div className="space-y-3 text-left">
-        <p className="text-sm">
+      <div className="space-y-3 rounded-[var(--radius-md)] border border-[color:var(--color-accent)]/30 bg-[color:var(--color-accent)]/10 p-4 text-left">
+        <p className="text-sm text-[color:var(--color-ink)]">
           Te hemos enviado un enlace a <strong>{status.email}</strong>. Ábrelo en este dispositivo
           para entrar.
         </p>
         <button
           type="button"
           onClick={() => setStatus({ kind: 'idle' })}
-          className="text-sm underline text-[color:var(--color-ink-soft)]"
+          className="cursor-pointer text-sm font-semibold text-[color:var(--color-accent)] underline underline-offset-4"
         >
           Usar otro email
         </button>
@@ -87,10 +87,10 @@ export function LoginButton({ next = '/app' }: { next?: string }) {
         {status.kind === 'google' ? 'Redirigiendo...' : 'Entrar con Google'}
       </Button>
 
-      <div className="flex items-center gap-3 text-xs text-[color:var(--color-ink-soft)]">
-        <span className="h-px flex-1 bg-black/10" />
+      <div className="flex items-center gap-3 text-xs uppercase tracking-[0.2em] text-[color:var(--color-ink-mute)]">
+        <span className="h-px flex-1 bg-[color:var(--color-line)]" />
         <span>o con email</span>
-        <span className="h-px flex-1 bg-black/10" />
+        <span className="h-px flex-1 bg-[color:var(--color-line)]" />
       </div>
 
       <form onSubmit={onSubmit} className="space-y-3">
@@ -119,7 +119,10 @@ export function LoginButton({ next = '/app' }: { next?: string }) {
       </form>
 
       {status.kind === 'error' ? (
-        <p className="text-sm text-red-600" role="alert">
+        <p
+          className="rounded-[var(--radius-md)] border border-[color:var(--color-danger)]/40 bg-[color:var(--color-danger)]/10 px-3 py-2 text-sm text-[color:var(--color-danger)]"
+          role="alert"
+        >
           {status.message}
         </p>
       ) : null}

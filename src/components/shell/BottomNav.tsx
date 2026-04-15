@@ -16,24 +16,33 @@ export function BottomNav() {
   return (
     <nav
       aria-label="Navegación principal"
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-black/5 bg-[color:var(--color-surface)]/95 backdrop-blur"
+      className="fixed inset-x-0 bottom-4 z-40 flex justify-center px-4 [padding-bottom:env(safe-area-inset-bottom)]"
     >
-      <ul className="mx-auto flex max-w-xl">
+      <ul className="flex w-full max-w-sm items-stretch gap-1 rounded-full border border-[color:var(--color-line)] bg-[color:var(--color-surface)]/90 p-1.5 shadow-[var(--shadow-lift)] backdrop-blur-xl">
         {items.map(({ href, label, Icon }) => {
-          const active = path === href || (href !== '/app' && path.startsWith(href));
+          const active = href === '/app' ? path === '/app' : path.startsWith(href);
           return (
             <li key={href} className="flex-1">
               <Link
                 href={href}
+                aria-current={active ? 'page' : undefined}
                 className={cn(
-                  'flex flex-col items-center gap-1 py-2.5 text-xs',
+                  'group relative flex h-12 cursor-pointer items-center justify-center gap-1.5 rounded-full transition-colors duration-[var(--duration-fast)]',
                   active
-                    ? 'text-[color:var(--color-accent)]'
-                    : 'text-[color:var(--color-ink-soft)] hover:text-[color:var(--color-ink)]',
+                    ? 'bg-[color:var(--color-accent)] text-[color:var(--color-accent-ink)] shadow-[var(--shadow-glow)]'
+                    : 'text-[color:var(--color-ink-soft)] hover:bg-[color:var(--color-surface-2)] hover:text-[color:var(--color-ink)]',
                 )}
               >
-                <Icon className="h-5 w-5" aria-hidden />
-                <span>{label}</span>
+                <Icon className="h-5 w-5 shrink-0" aria-hidden />
+                <span
+                  className={cn(
+                    'overflow-hidden whitespace-nowrap text-xs font-semibold tracking-tight transition-[max-width,opacity] duration-[var(--duration-normal)]',
+                    active ? 'max-w-[5rem] opacity-100' : 'max-w-0 opacity-0',
+                  )}
+                >
+                  {label}
+                </span>
+                <span className="sr-only">{label}</span>
               </Link>
             </li>
           );

@@ -27,7 +27,7 @@ type AvatarProps = Readonly<{
 export function Avatar({ src, name, size = 'md', className }: AvatarProps) {
   const initials = getInitials(name);
   const base =
-    'inline-flex shrink-0 items-center justify-center rounded-full overflow-hidden border border-black/10 bg-[color:var(--color-surface-2)] text-[color:var(--color-ink)] font-semibold uppercase tracking-tight select-none';
+    'inline-flex shrink-0 items-center justify-center rounded-full overflow-hidden border border-[color:var(--color-line)] bg-[color:var(--color-surface-3)] text-[color:var(--color-ink)] font-semibold uppercase tracking-tight select-none';
 
   if (src) {
     return (
