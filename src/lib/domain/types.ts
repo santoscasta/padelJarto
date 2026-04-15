@@ -1,5 +1,5 @@
 export type TournamentStatus = 'draft' | 'open' | 'groups' | 'knockout' | 'complete';
-export type PairingMode = 'pre_inscribed' | 'draw' | 'mixed';
+export type PairingMode = 'pre_inscribed' | 'draw' | 'mixed' | 'owner_picks';
 export type MatchPhase = 'group' | 'R32' | 'R16' | 'QF' | 'SF' | 'F';
 export type ResultStatus = 'reported' | 'validated' | 'disputed' | 'walkover' | 'corrected';
 export type InscriptionStatus = 'pending' | 'confirmed';

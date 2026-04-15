@@ -211,6 +211,22 @@ export class SupabaseRepository implements Repository {
     return (data ?? []).map(mapInscription);
   }
 
+  async setInscriptionPair(
+    tournamentId: string,
+    playerId: string,
+    pairId: string | null,
+  ): Promise<Inscription> {
+    const { data, error } = await this.admin
+      .from('inscriptions')
+      .update({ pair_id: pairId, status: pairId ? 'confirmed' : 'pending' })
+      .eq('tournament_id', tournamentId)
+      .eq('player_id', playerId)
+      .select('*')
+      .single();
+    if (error) throw error;
+    return mapInscription(data);
+  }
+
   // ---------- invitations ----------
   async createInvitation(
     tournamentId: string, token: string, expiresAt: string, createdBy: string,

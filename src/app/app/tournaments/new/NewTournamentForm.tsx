@@ -21,7 +21,7 @@ export function NewTournamentForm() {
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState({
     name: '',
-    pairingMode: 'draw' as 'pre_inscribed' | 'draw' | 'mixed',
+    pairingMode: 'owner_picks' as 'pre_inscribed' | 'draw' | 'mixed' | 'owner_picks',
     size: 8,
     groupCount: 2,
     playoffCutoff: 4,
@@ -64,6 +64,7 @@ export function NewTournamentForm() {
         </Field>
         <Field label="Modo de parejas">
           <Select value={form.pairingMode} onChange={(e) => update('pairingMode', e.target.value as typeof form.pairingMode)}>
+            <option value="owner_picks">El organizador asigna parejas</option>
             <option value="pre_inscribed">Pre-inscritas</option>
             <option value="draw">Sorteo</option>
             <option value="mixed">Mixto</option>

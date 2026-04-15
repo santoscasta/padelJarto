@@ -14,7 +14,7 @@ export function InviteForm({
   players,
 }: {
   token: string;
-  pairingMode: 'pre_inscribed' | 'draw' | 'mixed';
+  pairingMode: 'pre_inscribed' | 'draw' | 'mixed' | 'owner_picks';
   players: ReadonlyArray<Player>;
 }) {
   const router = useRouter();
@@ -34,6 +34,24 @@ export function InviteForm({
       if (!res.ok) { setError(res.message); return; }
       router.refresh();
     });
+  }
+
+  if (pairingMode === 'owner_picks') {
+    return (
+      <form onSubmit={submit} className="space-y-4">
+        <div className="rounded-md border border-dashed border-[color:var(--color-border)] p-3 text-sm text-[color:var(--color-ink-soft)]">
+          <p className="font-semibold text-[color:var(--color-ink)]">Inscripción individual.</p>
+          <p className="mt-1">
+            El organizador te asignará pareja antes de que empiece el torneo.
+            Solo tienes que confirmar tu plaza aquí.
+          </p>
+        </div>
+        {error ? <p className="text-sm text-[color:var(--color-danger)]">{error}</p> : null}
+        <Button type="submit" disabled={isPending} className="w-full">
+          {isPending ? 'Inscribiendo…' : 'Inscribirme'}
+        </Button>
+      </form>
+    );
   }
 
   return (

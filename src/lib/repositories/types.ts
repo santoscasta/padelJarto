@@ -61,6 +61,7 @@ export interface Repository {
   // inscriptions
   createInscription(input: NewInscriptionInput): Promise<Inscription>;
   listInscriptions(tournamentId: string): Promise<ReadonlyArray<Inscription>>;
+  setInscriptionPair(tournamentId: string, playerId: string, pairId: string | null): Promise<Inscription>;
 
   // invitations
   createInvitation(tournamentId: string, token: string, expiresAt: string, createdBy: string): Promise<Invitation>;

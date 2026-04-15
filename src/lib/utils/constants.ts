@@ -1,5 +1,5 @@
 export const TOURNAMENT_STATUS = ['draft', 'open', 'groups', 'knockout', 'complete'] as const;
-export const PAIRING_MODE = ['pre_inscribed', 'draw', 'mixed'] as const;
+export const PAIRING_MODE = ['pre_inscribed', 'draw', 'mixed', 'owner_picks'] as const;
 export const MATCH_PHASE = ['group', 'R32', 'R16', 'QF', 'SF', 'F'] as const;
 export const RESULT_STATUS = ['reported', 'validated', 'disputed', 'walkover', 'corrected'] as const;
 

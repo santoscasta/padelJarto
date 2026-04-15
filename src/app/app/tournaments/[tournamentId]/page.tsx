@@ -7,6 +7,7 @@ import { OwnerControls } from './OwnerControls';
 import { GroupsView } from './GroupsView';
 import { KnockoutView } from './KnockoutView';
 import { InviteLinkCard } from './InviteLinkCard';
+import { OwnerPairsManager } from './OwnerPairsManager';
 import { getServerEnv } from '@/lib/env';
 
 export default async function TournamentDetailPage({
@@ -66,6 +67,17 @@ export default async function TournamentDetailPage({
               })}
             </ul>
           </Card>
+          {isOwner && tournament.status === 'open' && tournament.pairingMode === 'owner_picks' ? (
+            <Card>
+              <p className="mb-3 text-sm font-semibold">Asignación de parejas</p>
+              <OwnerPairsManager
+                tournamentId={tournament.id}
+                inscriptions={inscriptions.map((i) => ({ playerId: i.playerId, pairId: i.pairId }))}
+                players={players.map((p) => ({ id: p.id, displayName: p.displayName }))}
+                pairs={pairs.map((p) => ({ id: p.id, playerAId: p.playerAId, playerBId: p.playerBId }))}
+              />
+            </Card>
+          ) : null}
         </>
       ) : null}
 

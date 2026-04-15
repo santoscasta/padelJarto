@@ -157,6 +157,24 @@ export class InMemoryRepository implements Repository {
   async listInscriptions(tournamentId: string): Promise<ReadonlyArray<Inscription>> {
     return [...this.inscriptions.values()].filter((i) => i.tournamentId === tournamentId);
   }
+  async setInscriptionPair(
+    tournamentId: string,
+    playerId: string,
+    pairId: string | null,
+  ): Promise<Inscription> {
+    for (const ins of this.inscriptions.values()) {
+      if (ins.tournamentId === tournamentId && ins.playerId === playerId) {
+        const next: Inscription = {
+          ...ins,
+          pairId,
+          status: pairId ? 'confirmed' : 'pending',
+        };
+        this.inscriptions.set(ins.id, next);
+        return next;
+      }
+    }
+    throw new Error('NOT_FOUND: inscription');
+  }
 
   // -- invitations --
   async createInvitation(tournamentId: string, token: string, expiresAt: string, createdBy: string): Promise<Invitation> {

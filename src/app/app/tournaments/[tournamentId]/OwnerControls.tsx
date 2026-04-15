@@ -11,7 +11,7 @@ import {
   changePairingModeAction,
 } from '@/app/app/tournaments/actions';
 
-type PairingMode = 'pre_inscribed' | 'draw' | 'mixed';
+type PairingMode = 'pre_inscribed' | 'draw' | 'mixed' | 'owner_picks';
 
 type Props = {
   tournamentId: string;
@@ -24,6 +24,7 @@ const PAIRING_LABELS: Record<PairingMode, string> = {
   pre_inscribed: 'Con pareja pre-inscrita',
   draw: 'Sorteo de parejas al empezar',
   mixed: 'Mixto (solo o con pareja)',
+  owner_picks: 'El organizador asigna parejas',
 };
 
 export function OwnerControls({ tournamentId, status, pairingMode, hasInscriptions }: Props) {

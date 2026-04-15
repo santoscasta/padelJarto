@@ -167,15 +167,22 @@ export async function startTournamentAction(tournamentId: string, seed = Date.no
     if (t.status !== 'open') return fail('CONFLICT', `Status actual: ${t.status}`);
 
     const inscriptions = await repo.listInscriptions(tournamentId);
-    const withPair = inscriptions.filter((i) => i.pairId);
     const singles = inscriptions.filter((i) => !i.pairId);
 
-    // 1. Build pairs from singles.
-    const singlePlayers = await Promise.all(singles.map((i) => repo.getPlayer(i.playerId)));
-    const validSinglePlayers = singlePlayers.filter((p): p is NonNullable<typeof p> => !!p);
-    const { pairs: drawnPairs } = drawPairs(validSinglePlayers, seed);
-    for (const dp of drawnPairs) {
-      await repo.upsertPair(dp.playerAId, dp.playerBId);
+    if (t.pairingMode === 'owner_picks') {
+      if (singles.length > 0) {
+        return fail('CONFLICT', 'Hay inscritos sin pareja asignada; asígnales pareja antes de empezar');
+      }
+    } else {
+      // 1. Build pairs from singles for draw/mixed/pre_inscribed modes.
+      const singlePlayers = await Promise.all(singles.map((i) => repo.getPlayer(i.playerId)));
+      const validSinglePlayers = singlePlayers.filter((p): p is NonNullable<typeof p> => !!p);
+      const { pairs: drawnPairs } = drawPairs(validSinglePlayers, seed);
+      for (const dp of drawnPairs) {
+        const pair = await repo.upsertPair(dp.playerAId, dp.playerBId);
+        await repo.setInscriptionPair(tournamentId, dp.playerAId, pair.id);
+        await repo.setInscriptionPair(tournamentId, dp.playerBId, pair.id);
+      }
     }
     const allPairs = await repo.listPairsForTournament(tournamentId);
     if (allPairs.length < 2) return fail('CONFLICT', 'No hay parejas suficientes');
@@ -215,6 +222,80 @@ export async function startTournamentAction(tournamentId: string, seed = Date.no
     }
     revalidatePath(`/app/tournaments/${tournamentId}`);
     return ok(updated);
+  });
+}
+
+const AssignPairSchema = z.object({
+  tournamentId: z.string().uuid(),
+  playerAId: z.string().uuid(),
+  playerBId: z.string().uuid(),
+});
+
+export async function assignPairAction(
+  input: z.input<typeof AssignPairSchema>,
+): Promise<ActionResult<{ pairId: string }>> {
+  return withAuth(async (session) => {
+    const parsed = AssignPairSchema.safeParse(input);
+    if (!parsed.success) {
+      return fail('VALIDATION_FAILED', 'Datos inválidos', fieldsFromZod(parsed.error));
+    }
+    const { tournamentId, playerAId, playerBId } = parsed.data;
+    if (playerAId === playerBId) {
+      return fail('VALIDATION_FAILED', 'No puedes emparejar un jugador consigo mismo');
+    }
+    const repo = await getRepo();
+    const t = await repo.getTournament(tournamentId);
+    if (!t) return fail('NOT_FOUND', 'Torneo no encontrado');
+    if (t.ownerId !== session.userId) return fail('NOT_AUTHORIZED', 'No eres el organizador');
+    if (t.status !== 'open') return fail('CONFLICT', `Status actual: ${t.status}`);
+    if (t.pairingMode !== 'owner_picks') {
+      return fail('CONFLICT', 'Este torneo no usa asignación manual de parejas');
+    }
+    const inscriptions = await repo.listInscriptions(tournamentId);
+    const insA = inscriptions.find((i) => i.playerId === playerAId);
+    const insB = inscriptions.find((i) => i.playerId === playerBId);
+    if (!insA || !insB) return fail('NOT_FOUND', 'Ambos jugadores deben estar inscritos');
+    if (insA.pairId || insB.pairId) {
+      return fail('CONFLICT', 'Alguno de los jugadores ya tiene pareja asignada');
+    }
+    const pair = await repo.upsertPair(playerAId, playerBId);
+    await repo.setInscriptionPair(tournamentId, playerAId, pair.id);
+    await repo.setInscriptionPair(tournamentId, playerBId, pair.id);
+    revalidatePath(`/app/tournaments/${tournamentId}`);
+    return ok({ pairId: pair.id });
+  });
+}
+
+const UnpairSchema = z.object({
+  tournamentId: z.string().uuid(),
+  pairId: z.string().uuid(),
+});
+
+export async function unpairAction(
+  input: z.input<typeof UnpairSchema>,
+): Promise<ActionResult<null>> {
+  return withAuth(async (session) => {
+    const parsed = UnpairSchema.safeParse(input);
+    if (!parsed.success) {
+      return fail('VALIDATION_FAILED', 'Datos inválidos', fieldsFromZod(parsed.error));
+    }
+    const { tournamentId, pairId } = parsed.data;
+    const repo = await getRepo();
+    const t = await repo.getTournament(tournamentId);
+    if (!t) return fail('NOT_FOUND', 'Torneo no encontrado');
+    if (t.ownerId !== session.userId) return fail('NOT_AUTHORIZED', 'No eres el organizador');
+    if (t.status !== 'open') return fail('CONFLICT', `Status actual: ${t.status}`);
+    if (t.pairingMode !== 'owner_picks') {
+      return fail('CONFLICT', 'Este torneo no usa asignación manual de parejas');
+    }
+    const inscriptions = await repo.listInscriptions(tournamentId);
+    const affected = inscriptions.filter((i) => i.pairId === pairId);
+    if (affected.length === 0) return fail('NOT_FOUND', 'Pareja no encontrada');
+    for (const ins of affected) {
+      await repo.setInscriptionPair(tournamentId, ins.playerId, null);
+    }
+    revalidatePath(`/app/tournaments/${tournamentId}`);
+    return ok(null);
   });
 }
 
