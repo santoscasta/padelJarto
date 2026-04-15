@@ -255,15 +255,32 @@ export class SupabaseRepository implements Repository {
 
   // ---------- groups + matches ----------
   async createGroups(groups: ReadonlyArray<Group>): Promise<ReadonlyArray<Group>> {
-    const groupRows = groups.map((g) => ({ id: g.id, tournament_id: g.tournamentId, label: g.label }));
-    const { error: gErr } = await this.db.from('groups').insert(groupRows);
+    // The domain layer hands us synthetic string IDs (e.g. "group-<tid>-A"),
+    // but `groups.id` is a uuid column with a default. Drop the synthetic id
+    // so Postgres generates a UUID, then map the returned rows back to our
+    // domain Groups and use those real UUIDs when inserting group_pairs.
+    const groupRows = groups.map((g) => ({ tournament_id: g.tournamentId, label: g.label }));
+    const { data: inserted, error: gErr } = await this.db
+      .from('groups')
+      .insert(groupRows)
+      .select('id, tournament_id, label');
     if (gErr) throw gErr;
-    const gpRows = groups.flatMap((g) => g.pairIds.map((pid) => ({ group_id: g.id, pair_id: pid })));
+    const insertedByLabel = new Map<string, SupabaseRow>(
+      (inserted ?? []).map((row: SupabaseRow) => [row.label, row]),
+    );
+    const persisted: Group[] = groups.map((g) => {
+      const row = insertedByLabel.get(g.label);
+      if (!row) throw new Error(`Group insert did not return row for label ${g.label}`);
+      return { id: row.id, tournamentId: row.tournament_id, label: row.label, pairIds: g.pairIds };
+    });
+    const gpRows = persisted.flatMap((g) =>
+      g.pairIds.map((pid) => ({ group_id: g.id, pair_id: pid })),
+    );
     if (gpRows.length) {
       const { error: pErr } = await this.db.from('group_pairs').insert(gpRows);
       if (pErr) throw pErr;
     }
-    return groups;
+    return persisted;
   }
 
   async listGroups(tournamentId: string): Promise<ReadonlyArray<Group>> {
@@ -283,13 +300,15 @@ export class SupabaseRepository implements Repository {
 
   async createMatches(matches: ReadonlyArray<Match>): Promise<ReadonlyArray<Match>> {
     if (matches.length === 0) return matches;
+    // Synthetic IDs from the domain layer are not valid uuids; let Postgres
+    // generate them via the column default and return the persisted rows.
     const rows = matches.map((m) => ({
-      id: m.id, tournament_id: m.tournamentId, phase: m.phase, group_id: m.groupId,
+      tournament_id: m.tournamentId, phase: m.phase, group_id: m.groupId,
       pair_a_id: m.pairAId, pair_b_id: m.pairBId, court: m.court, scheduled_at: m.scheduledAt,
     }));
-    const { error } = await this.db.from('matches').insert(rows);
+    const { data, error } = await this.db.from('matches').insert(rows).select('*');
     if (error) throw error;
-    return matches;
+    return (data ?? []).map(mapMatch);
   }
 
   async getMatch(id: string): Promise<Match | null> {

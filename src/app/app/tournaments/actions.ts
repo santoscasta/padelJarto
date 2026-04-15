@@ -188,9 +188,14 @@ export async function startTournamentAction(tournamentId: string, seed = Date.no
     if (allPairs.length < 2) return fail('CONFLICT', 'No hay parejas suficientes');
 
     // 2. Groups + matches.
-    const groups = generateGroups(allPairs, t.groupCount, tournamentId);
-    await repo.createGroups(groups);
-    const rrMatches = groups.flatMap((g) => generateRoundRobinMatches(g.pairIds, tournamentId, g.id));
+    // generateGroups produces synthetic group IDs for the in-memory domain.
+    // The persistence layer may assign real IDs (Postgres uuids), so feed the
+    // persisted groups back into the match generator instead of the draft.
+    const draftGroups = generateGroups(allPairs, t.groupCount, tournamentId);
+    const persistedGroups = await repo.createGroups(draftGroups);
+    const rrMatches = persistedGroups.flatMap((g) =>
+      generateRoundRobinMatches(g.pairIds, tournamentId, g.id),
+    );
     await repo.createMatches(rrMatches);
 
     const updated = await repo.updateTournamentStatus(tournamentId, 'groups');
