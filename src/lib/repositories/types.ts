@@ -56,6 +56,7 @@ export interface Repository {
   getTournament(id: string): Promise<Tournament | null>;
   listTournaments(): Promise<ReadonlyArray<Tournament>>;
   updateTournamentStatus(id: string, status: TournamentStatus): Promise<Tournament>;
+  updateTournamentPairingMode(id: string, pairingMode: Tournament['pairingMode']): Promise<Tournament>;
 
   // inscriptions
   createInscription(input: NewInscriptionInput): Promise<Inscription>;

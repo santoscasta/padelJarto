@@ -126,6 +126,17 @@ export class InMemoryRepository implements Repository {
     return next;
   }
 
+  async updateTournamentPairingMode(
+    id: string,
+    pairingMode: Tournament['pairingMode'],
+  ): Promise<Tournament> {
+    const t = this.tournaments.get(id);
+    if (!t) throw new Error(`Tournament ${id} not found`);
+    const next = { ...t, pairingMode };
+    this.tournaments.set(id, next);
+    return next;
+  }
+
   // -- inscriptions --
   async createInscription(input: NewInscriptionInput): Promise<Inscription> {
     for (const i of this.inscriptions.values()) {

@@ -2,22 +2,35 @@
 import { useTransition, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
+import { Select } from '@/components/ui/Input';
 import {
   openTournamentAction,
   startTournamentAction,
   advanceToKnockoutAction,
   createInvitationAction,
+  changePairingModeAction,
 } from '@/app/app/tournaments/actions';
+
+type PairingMode = 'pre_inscribed' | 'draw' | 'mixed';
 
 type Props = {
   tournamentId: string;
   status: 'draft' | 'open' | 'groups' | 'knockout' | 'complete';
+  pairingMode: PairingMode;
+  hasInscriptions: boolean;
 };
 
-export function OwnerControls({ tournamentId, status }: Props) {
+const PAIRING_LABELS: Record<PairingMode, string> = {
+  pre_inscribed: 'Con pareja pre-inscrita',
+  draw: 'Sorteo de parejas al empezar',
+  mixed: 'Mixto (solo o con pareja)',
+};
+
+export function OwnerControls({ tournamentId, status, pairingMode, hasInscriptions }: Props) {
   const [isPending, start] = useTransition();
   const [err, setErr] = useState<string | null>(null);
   const router = useRouter();
+  const canChangeMode = (status === 'draft' || status === 'open') && !hasInscriptions;
   function run(fn: () => Promise<{ ok: boolean; message?: string }>) {
     setErr(null);
     start(async () => {
@@ -28,6 +41,27 @@ export function OwnerControls({ tournamentId, status }: Props) {
   }
   return (
     <div className="flex flex-wrap gap-2">
+      {canChangeMode && (
+        <label className="flex items-center gap-2 text-sm">
+          <span className="text-[color:var(--color-ink-soft)]">Parejas:</span>
+          <Select
+            value={pairingMode}
+            disabled={isPending}
+            onChange={(e) =>
+              run(() =>
+                changePairingModeAction({
+                  tournamentId,
+                  pairingMode: e.target.value as PairingMode,
+                }),
+              )
+            }
+          >
+            {(Object.keys(PAIRING_LABELS) as PairingMode[]).map((m) => (
+              <option key={m} value={m}>{PAIRING_LABELS[m]}</option>
+            ))}
+          </Select>
+        </label>
+      )}
       {status === 'draft' && (
         <>
           <Button disabled={isPending} onClick={() => run(() => openTournamentAction(tournamentId))}>

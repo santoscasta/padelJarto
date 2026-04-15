@@ -51,15 +51,40 @@ export function InviteForm({
         </fieldset>
       ) : null}
       {mode === 'with_partner' ? (
-        <Field label="Compañero">
-          <Select value={partnerId} onChange={(e) => setPartnerId(e.target.value)} required>
-            <option value="">Elige a tu compañero</option>
-            {players.map((p) => <option key={p.id} value={p.id}>{p.displayName}</option>)}
-          </Select>
-        </Field>
+        players.length === 0 ? (
+          <div className="rounded-md border border-dashed border-[color:var(--color-border)] p-3 text-sm text-[color:var(--color-ink-soft)]">
+            <p className="font-semibold text-[color:var(--color-ink)]">Aún no hay más jugadores en la app.</p>
+            <p className="mt-1">
+              Comparte el enlace de invitación con tu compañero. Cuando se registre,
+              vuelve aquí y podrás elegirle como pareja.
+            </p>
+            {pairingMode === 'mixed' ? (
+              <p className="mt-2">
+                O cambia arriba a <strong>&quot;Me apunto solo&quot;</strong> para reservar tu plaza
+                y emparejarte más tarde.
+              </p>
+            ) : (
+              <p className="mt-2">
+                Si prefieres no depender de un compañero fijo, pide al organizador
+                que cambie el modo a <strong>sorteo</strong> o <strong>mixto</strong>.
+              </p>
+            )}
+          </div>
+        ) : (
+          <Field label="Compañero">
+            <Select value={partnerId} onChange={(e) => setPartnerId(e.target.value)} required>
+              <option value="">Elige a tu compañero</option>
+              {players.map((p) => <option key={p.id} value={p.id}>{p.displayName}</option>)}
+            </Select>
+          </Field>
+        )
       ) : null}
       {error ? <p className="text-sm text-[color:var(--color-danger)]">{error}</p> : null}
-      <Button type="submit" disabled={isPending} className="w-full">
+      <Button
+        type="submit"
+        disabled={isPending || (mode === 'with_partner' && players.length === 0)}
+        className="w-full"
+      >
         {isPending ? 'Inscribiendo…' : 'Inscribirme'}
       </Button>
     </form>

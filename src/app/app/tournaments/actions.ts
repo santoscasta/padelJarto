@@ -76,6 +76,39 @@ export async function createTournamentAction(input: CreateTournamentInput): Prom
   });
 }
 
+const ChangePairingModeSchema = z.object({
+  tournamentId: z.string().uuid(),
+  pairingMode: z.enum(PAIRING_MODE),
+});
+
+export async function changePairingModeAction(
+  input: z.input<typeof ChangePairingModeSchema>,
+): Promise<ActionResult<Tournament>> {
+  return withAuth(async (session) => {
+    const parsed = ChangePairingModeSchema.safeParse(input);
+    if (!parsed.success) {
+      return fail('VALIDATION_FAILED', 'Datos inválidos', fieldsFromZod(parsed.error));
+    }
+    const repo = await getRepo();
+    const t = await repo.getTournament(parsed.data.tournamentId);
+    if (!t) return fail('NOT_FOUND', 'Torneo no encontrado');
+    if (t.ownerId !== session.userId) return fail('NOT_AUTHORIZED', 'No eres el organizador');
+    if (t.status !== 'draft' && t.status !== 'open') {
+      return fail('CONFLICT', 'El torneo ya está en curso');
+    }
+    // Changing pairing mode after people have inscribed would invalidate the
+    // pairs they chose at inscription time, so only allow it while empty.
+    const existing = await repo.listInscriptions(t.id);
+    if (existing.length > 0) {
+      return fail('CONFLICT', 'Ya hay inscritos, no se puede cambiar el modo');
+    }
+    if (t.pairingMode === parsed.data.pairingMode) return ok(t);
+    const updated = await repo.updateTournamentPairingMode(t.id, parsed.data.pairingMode);
+    revalidatePath(`/app/tournaments/${t.id}`);
+    return ok(updated);
+  });
+}
+
 export async function openTournamentAction(tournamentId: string): Promise<ActionResult<Tournament>> {
   return withAuth(async (session) => {
     const repo = await getRepo();

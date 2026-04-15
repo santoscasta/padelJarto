@@ -45,7 +45,12 @@ export default async function TournamentDetailPage({
       {isOwner ? (
         <Card>
           <p className="mb-3 text-sm font-semibold">Controles de organizador</p>
-          <OwnerControls tournamentId={tournament.id} status={tournament.status} />
+          <OwnerControls
+            tournamentId={tournament.id}
+            status={tournament.status}
+            pairingMode={tournament.pairingMode}
+            hasInscriptions={inscriptions.length > 0}
+          />
         </Card>
       ) : null}
 

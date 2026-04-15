@@ -174,6 +174,20 @@ export class SupabaseRepository implements Repository {
     return mapTournament(data);
   }
 
+  async updateTournamentPairingMode(
+    id: string,
+    pairingMode: Tournament['pairingMode'],
+  ): Promise<Tournament> {
+    const { data, error } = await this.db
+      .from('tournaments')
+      .update({ pairing_mode: pairingMode })
+      .eq('id', id)
+      .select('*')
+      .single();
+    if (error) throw error;
+    return mapTournament(data);
+  }
+
   // ---------- inscriptions ----------
   async createInscription(input: NewInscriptionInput): Promise<Inscription> {
     const { data, error } = await this.db
