@@ -11,9 +11,11 @@ import { getRepo } from '@/lib/repositories/provider';
 import { OwnerControls } from './OwnerControls';
 import { GroupsView } from './GroupsView';
 import { KnockoutView } from './KnockoutView';
+import { RoundsView } from './RoundsView';
 import { InviteLinkCard } from './InviteLinkCard';
 import { OwnerPairsManager } from './OwnerPairsManager';
 import { getServerEnv } from '@/lib/env';
+import { computeTournamentRounds } from '@/lib/domain/rounds';
 
 const STATUS_LABEL: Record<string, string> = {
   draft: 'Borrador',
@@ -231,6 +233,17 @@ export default async function TournamentDetailPage({
 
       {status === 'groups' || status === 'knockout' || status === 'complete' ? (
         <>
+          <RoundsView
+            tournamentId={tournament.id}
+            rounds={computeTournamentRounds(
+              groups,
+              matches.filter((m) => m.phase === 'group'),
+            )}
+            pairs={pairs}
+            players={players}
+            results={results}
+            currentPairId={myPair?.id ?? null}
+          />
           <GroupsView
             tournamentId={tournament.id}
             groups={groups}

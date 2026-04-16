@@ -1,5 +1,4 @@
-import Link from 'next/link';
-import { Crown, ArrowRight } from 'lucide-react';
+import { Crown } from 'lucide-react';
 import { Card, CardEyebrow } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { PairLine } from '@/components/ui/PairLine';
@@ -8,6 +7,7 @@ import { computeStandings } from '@/lib/domain/standings';
 import { cn } from '@/lib/utils/cn';
 
 type Props = Readonly<{
+  /** Kept for prop-shape stability with the detail page caller. */
   tournamentId: string;
   groups: ReadonlyArray<Group>;
   pairs: ReadonlyArray<Pair>;
@@ -16,19 +16,7 @@ type Props = Readonly<{
   results: ReadonlyArray<Result>;
 }>;
 
-const STATUS_TONE = {
-  validated: 'ok',
-  reported: 'warn',
-  pending: 'neutral',
-} as const;
-const STATUS_LABEL: Record<string, string> = {
-  validated: 'Validado',
-  reported: 'Reportado',
-  pending: 'Pendiente',
-};
-
 export function GroupsView({
-  tournamentId,
   groups,
   pairs,
   players,
@@ -116,42 +104,6 @@ export function GroupsView({
               </ol>
             </div>
 
-            {gMatches.length > 0 ? (
-              <div>
-                <CardEyebrow>Partidos</CardEyebrow>
-                <ul className="mt-3 space-y-2">
-                  {gMatches.map((m) => {
-                    const result = results.find(
-                      (r) => r.matchId === m.id && r.status !== 'corrected',
-                    );
-                    const a = pairPlayers(m.pairAId);
-                    const b = pairPlayers(m.pairBId);
-                    const status = result?.status ?? 'pending';
-                    return (
-                      <li key={m.id}>
-                        <Link
-                          href={`/app/tournaments/${tournamentId}/matches/${m.id}`}
-                          className="group flex cursor-pointer items-center justify-between gap-3 rounded-[var(--radius-md)] border border-[color:var(--color-line)] bg-[color:var(--color-surface)] px-3 py-2.5 transition-colors duration-[var(--duration-fast)] hover:border-[color:var(--color-accent)]/40"
-                        >
-                          <span className="flex min-w-0 flex-1 items-center gap-3 text-sm">
-                            <PairLine playerA={a.a ?? null} playerB={a.b ?? null} size="xs" avatarsOnly />
-                            <span className="text-[color:var(--color-ink-mute)]">vs</span>
-                            <PairLine playerA={b.a ?? null} playerB={b.b ?? null} size="xs" avatarsOnly />
-                          </span>
-                          <Badge tone={STATUS_TONE[status as keyof typeof STATUS_TONE] ?? 'neutral'}>
-                            {STATUS_LABEL[status] ?? status}
-                          </Badge>
-                          <ArrowRight
-                            className="h-4 w-4 text-[color:var(--color-ink-mute)] transition-transform duration-[var(--duration-fast)] group-hover:translate-x-0.5 group-hover:text-[color:var(--color-accent)]"
-                            aria-hidden
-                          />
-                        </Link>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            ) : null}
           </Card>
         );
       })}
