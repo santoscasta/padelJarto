@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { ArrowRight, ShieldCheck, Trophy, Users } from 'lucide-react';
 import { getSession } from '@/lib/auth/session';
 import { Button } from '@/components/ui/Button';
+import { Brandmark } from '@/components/ui/Brandmark';
 
 // UX direction: modern dark sports app (Strava / NBA / Nike vibe).
 // Block layout, sports typography (Barlow Condensed), green primary + coral spark,
@@ -63,17 +64,7 @@ function Wordmark() {
 }
 
 function LogoMark() {
-  return (
-    <span
-      aria-hidden="true"
-      className="grid h-8 w-8 place-items-center rounded-[var(--radius-md)] bg-[color:var(--color-accent)] text-[color:var(--color-accent-ink)]"
-    >
-      <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
-        <circle cx="12" cy="12" r="8" />
-        <path d="M6 12h12M12 6v12" opacity="0.5" />
-      </svg>
-    </span>
-  );
+  return <Brandmark size={36} />;
 }
 
 /* --------------------------------------------------------------- hero */

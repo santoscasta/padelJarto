@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { LoginButton } from '@/components/auth/LoginButton';
+import { Brandmark } from '@/components/ui/Brandmark';
 
 export default function LoginPage({
   searchParams,
@@ -30,17 +31,9 @@ async function LoginContent({
       <Link
         href="/"
         aria-label="Volver al inicio"
-        className="absolute left-6 top-6 flex cursor-pointer items-center gap-2 text-[color:var(--color-ink-soft)] transition-colors hover:text-[color:var(--color-ink)]"
+        className="absolute left-6 top-6 flex cursor-pointer items-center gap-2.5 text-[color:var(--color-ink-soft)] transition-colors hover:text-[color:var(--color-ink)]"
       >
-        <span
-          aria-hidden="true"
-          className="grid h-8 w-8 place-items-center rounded-[var(--radius-md)] bg-[color:var(--color-accent)] text-[color:var(--color-accent-ink)]"
-        >
-          <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
-            <circle cx="12" cy="12" r="8" />
-            <path d="M6 12h12M12 6v12" opacity="0.5" />
-          </svg>
-        </span>
+        <Brandmark size={36} />
         <span className="font-[family-name:var(--font-display)] text-sm font-bold uppercase tracking-tight">
           Padeljarto
         </span>
@@ -50,7 +43,8 @@ async function LoginContent({
         aria-labelledby="login-heading"
         className="w-full max-w-md space-y-7 rounded-[var(--radius-block)] border border-[color:var(--color-line)] bg-[color:var(--color-surface)] p-7 shadow-[var(--shadow-lift)]"
       >
-        <header className="space-y-3 text-center">
+        <header className="flex flex-col items-center gap-4 text-center">
+          <Brandmark size={72} className="shadow-[var(--shadow-glow)]" />
           <span className="inline-flex items-center gap-2 rounded-full border border-[color:var(--color-line)] bg-[color:var(--color-surface-2)] px-3 py-1 text-[length:var(--text-eyebrow)] font-semibold uppercase tracking-[0.22em] text-[color:var(--color-ink-soft)]">
             <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[color:var(--color-accent)]" />
             App privada
