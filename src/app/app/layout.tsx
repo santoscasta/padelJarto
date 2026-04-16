@@ -4,10 +4,11 @@ import { BottomNav } from '@/components/shell/BottomNav';
 import { NotificationBell } from '@/components/shell/NotificationBell';
 import { TopUserBadge } from '@/components/shell/TopUserBadge';
 import { InstallPrompt } from '@/components/pwa/InstallPrompt';
+import { Brandmark } from '@/components/ui/Brandmark';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="relative min-h-dvh bg-[color:var(--color-bg)] pb-32">
+    <div className="relative min-h-dvh bg-[color:var(--color-bg)] pb-40">
       {/* Ambient brand glow behind the top header */}
       <div
         aria-hidden="true"
@@ -23,20 +24,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       </div>
 
       <header className="sticky top-0 z-30 border-b border-[color:var(--color-line)]/60 bg-[color:var(--color-bg)]/80 backdrop-blur-xl">
-        <div className="mx-auto flex h-16 max-w-2xl items-center justify-between px-4">
+        <div className="mx-auto flex h-16 max-w-3xl items-center justify-between px-4">
           <Link
             href="/app"
             className="flex cursor-pointer items-center gap-2 text-[color:var(--color-ink)] transition-colors hover:text-[color:var(--color-accent)]"
           >
-            <span
-              aria-hidden="true"
-              className="grid h-8 w-8 place-items-center rounded-[var(--radius-md)] bg-[color:var(--color-accent)] text-[color:var(--color-accent-ink)]"
-            >
-              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
-                <circle cx="12" cy="12" r="8" />
-                <path d="M6 12h12M12 6v12" opacity="0.5" />
-              </svg>
-            </span>
+            <Brandmark size={36} />
             <span className="font-[family-name:var(--font-display)] text-base font-bold uppercase tracking-tight">
               Padeljarto
             </span>
@@ -52,7 +45,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
-      <main className="relative z-10 mx-auto max-w-2xl px-4 py-6 sm:py-8">{children}</main>
+      <main className="relative z-10 mx-auto max-w-3xl px-4 py-6 sm:py-8">{children}</main>
 
       <InstallPrompt />
       <BottomNav />
