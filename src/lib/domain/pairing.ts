@@ -25,6 +25,7 @@ export function drawPairs(singles: ReadonlyArray<Player>, seed: number): DrawPai
       playerAId: a,
       playerBId: b,
       rating: (top.rating + bot.rating) / 2 || ELO_BASE,
+      displayName: null,
     });
   }
   const leftover = n % 2 === 1 ? [sorted[Math.floor(n / 2)]] : [];

@@ -3,7 +3,7 @@ import { computeStandings } from '../standings';
 import type { Match, Pair, Result } from '../types';
 
 const P = (id: string, r = 1200): Pair => ({
-  id, playerAId: `${id}-a`, playerBId: `${id}-b`, rating: r,
+  id, playerAId: `${id}-a`, playerBId: `${id}-b`, rating: r, displayName: null,
 });
 const M = (id: string, a: string, b: string): Match => ({
   id, tournamentId: 't1', phase: 'group', groupId: 'g1',

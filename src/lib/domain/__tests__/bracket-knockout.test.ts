@@ -3,7 +3,7 @@ import { seedKnockout, knockoutPhaseFor } from '../bracket';
 import type { Pair } from '../types';
 
 const P = (id: string, r = 1200): Pair => ({
-  id, playerAId: `${id}-a`, playerBId: `${id}-b`, rating: r,
+  id, playerAId: `${id}-a`, playerBId: `${id}-b`, rating: r, displayName: null,
 });
 
 describe('knockoutPhaseFor', () => {

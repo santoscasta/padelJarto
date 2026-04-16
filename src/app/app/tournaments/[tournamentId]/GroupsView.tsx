@@ -77,6 +77,7 @@ export function GroupsView({
               <ol>
                 {standings.map((s, i) => {
                   const { a, b } = pairPlayers(s.pairId);
+                  const pairDisplayName = pairById.get(s.pairId)?.displayName ?? null;
                   const place = i + 1;
                   const isLeader = place === 1;
                   return (
@@ -97,7 +98,12 @@ export function GroupsView({
                       >
                         {isLeader ? <Crown className="h-3.5 w-3.5" aria-hidden /> : place}
                       </span>
-                      <PairLine playerA={a ?? null} playerB={b ?? null} size="xs" />
+                      <PairLine
+                        playerA={a ?? null}
+                        playerB={b ?? null}
+                        size="xs"
+                        displayName={pairDisplayName}
+                      />
                       <span className="font-[family-name:var(--font-display)] text-base font-bold tabular-nums text-[color:var(--color-ink)]">
                         {s.wins}
                       </span>

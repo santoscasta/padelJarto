@@ -92,7 +92,13 @@ export class InMemoryRepository implements Repository {
     const key = `${a}:${b}`;
     const existingId = this.pairByKey.get(key);
     if (existingId) return this.pairs.get(existingId)!;
-    const pair: Pair = { id: randomUUID(), playerAId: a, playerBId: b, rating: ELO_BASE };
+    const pair: Pair = {
+      id: randomUUID(),
+      playerAId: a,
+      playerBId: b,
+      rating: ELO_BASE,
+      displayName: null,
+    };
     this.pairs.set(pair.id, pair);
     this.pairByKey.set(key, pair.id);
     return pair;
@@ -109,6 +115,18 @@ export class InMemoryRepository implements Repository {
   }
   async listPairsRanked(limit = 100): Promise<ReadonlyArray<Pair>> {
     return [...this.pairs.values()].sort((a, b) => b.rating - a.rating).slice(0, limit);
+  }
+  async updatePairDisplayName(
+    pairId: string,
+    displayName: string | null,
+  ): Promise<Pair> {
+    const existing = this.pairs.get(pairId);
+    if (!existing) throw new Error('PAIR_NOT_FOUND');
+    const trimmed = typeof displayName === 'string' ? displayName.trim() : displayName;
+    const normalized = trimmed && trimmed.length > 0 ? trimmed : null;
+    const next: Pair = { ...existing, displayName: normalized };
+    this.pairs.set(pairId, next);
+    return next;
   }
 
   // -- tournaments --

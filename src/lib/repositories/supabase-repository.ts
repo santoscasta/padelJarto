@@ -111,7 +111,7 @@ export class SupabaseRepository implements Repository {
     const [a, b] = playerAId < playerBId ? [playerAId, playerBId] : [playerBId, playerAId];
     const { data: existing } = await this.db
       .from('pairs')
-      .select('id, player_a_id, player_b_id, rating')
+      .select('id, player_a_id, player_b_id, rating, display_name')
       .eq('player_a_id', a)
       .eq('player_b_id', b)
       .maybeSingle();
@@ -119,7 +119,7 @@ export class SupabaseRepository implements Repository {
     const { data, error } = await this.admin
       .from('pairs')
       .insert({ player_a_id: a, player_b_id: b })
-      .select('id, player_a_id, player_b_id, rating')
+      .select('id, player_a_id, player_b_id, rating, display_name')
       .single();
     if (error) throw error;
     return mapPair(data);
@@ -128,7 +128,7 @@ export class SupabaseRepository implements Repository {
   async getPair(id: string): Promise<Pair | null> {
     const { data, error } = await this.db
       .from('pairs')
-      .select('id, player_a_id, player_b_id, rating')
+      .select('id, player_a_id, player_b_id, rating, display_name')
       .eq('id', id)
       .maybeSingle();
     if (error) throw error;
@@ -138,7 +138,7 @@ export class SupabaseRepository implements Repository {
   async listPairsForTournament(tournamentId: string): Promise<ReadonlyArray<Pair>> {
     const { data, error } = await this.db
       .from('inscriptions')
-      .select('pair:pair_id(id, player_a_id, player_b_id, rating)')
+      .select('pair:pair_id(id, player_a_id, player_b_id, rating, display_name)')
       .eq('tournament_id', tournamentId)
       .not('pair_id', 'is', null);
     if (error) throw error;
@@ -154,11 +154,31 @@ export class SupabaseRepository implements Repository {
   async listPairsRanked(limit = 100): Promise<ReadonlyArray<Pair>> {
     const { data, error } = await this.db
       .from('pairs')
-      .select('id, player_a_id, player_b_id, rating')
+      .select('id, player_a_id, player_b_id, rating, display_name')
       .order('rating', { ascending: false })
       .limit(limit);
     if (error) throw error;
     return (data ?? []).map(mapPair);
+  }
+
+  async updatePairDisplayName(
+    pairId: string,
+    displayName: string | null,
+  ): Promise<Pair> {
+    // Use the user-authenticated client so the RLS policy
+    // `pairs_member_update` enforces that only one of the two pair members
+    // can write. Server actions validate input length before calling this.
+    const trimmed =
+      typeof displayName === 'string' ? displayName.trim() : displayName;
+    const normalized = trimmed && trimmed.length > 0 ? trimmed : null;
+    const { data, error } = await this.db
+      .from('pairs')
+      .update({ display_name: normalized })
+      .eq('id', pairId)
+      .select('id, player_a_id, player_b_id, rating, display_name')
+      .single();
+    if (error) throw error;
+    return mapPair(data);
   }
 
   // ---------- tournaments ----------
@@ -494,7 +514,14 @@ function mapPlayer(row: SupabaseRow): Player {
   };
 }
 function mapPair(row: SupabaseRow): Pair {
-  return { id: row.id, playerAId: row.player_a_id, playerBId: row.player_b_id, rating: Number(row.rating) };
+  const raw = typeof row.display_name === 'string' ? row.display_name.trim() : '';
+  return {
+    id: row.id,
+    playerAId: row.player_a_id,
+    playerBId: row.player_b_id,
+    rating: Number(row.rating),
+    displayName: raw.length > 0 ? raw : null,
+  };
 }
 function mapTournament(row: SupabaseRow): Tournament {
   return {

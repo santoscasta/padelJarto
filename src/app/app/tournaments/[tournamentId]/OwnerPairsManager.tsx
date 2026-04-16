@@ -15,7 +15,12 @@ type PlayerLite = Readonly<{
   displayName: string;
   avatarUrl: string | null;
 }>;
-type PairLite = Readonly<{ id: string; playerAId: string; playerBId: string }>;
+type PairLite = Readonly<{
+  id: string;
+  playerAId: string;
+  playerBId: string;
+  displayName: string | null;
+}>;
 
 type Props = Readonly<{
   tournamentId: string;
@@ -194,7 +199,12 @@ export function OwnerPairsManager({
                   key={pair.id}
                   className="flex items-center justify-between gap-3 rounded-[var(--radius-md)] border border-[color:var(--color-line)] bg-[color:var(--color-surface-2)] px-3 py-2"
                 >
-                  <PairLine playerA={a ?? null} playerB={b ?? null} size="xs" />
+                  <PairLine
+                    playerA={a ?? null}
+                    playerB={b ?? null}
+                    size="xs"
+                    displayName={pair.displayName}
+                  />
                   <Button
                     variant="ghost"
                     size="sm"

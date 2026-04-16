@@ -26,6 +26,7 @@ export type Pair = Readonly<{
   playerAId: string;
   playerBId: string;
   rating: number;
+  displayName: string | null;
 }>;
 
 export type Tournament = Readonly<{

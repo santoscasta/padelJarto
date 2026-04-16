@@ -4,6 +4,8 @@ import { ArrowLeft, Users } from 'lucide-react';
 import { Card, CardEyebrow } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Avatar } from '@/components/ui/Avatar';
+import { PairLine } from '@/components/ui/PairLine';
+import { EditablePairName } from '@/components/ui/EditablePairName';
 import { requireSession } from '@/lib/auth/session';
 import { getRepo } from '@/lib/repositories/provider';
 import { OwnerControls } from './OwnerControls';
@@ -53,6 +55,23 @@ export default async function TournamentDetailPage({
   const status = tournament.status;
   const inscritosVisible = isPreStart(status);
 
+  const myInscription = inscriptions.find((i) => i.playerId === session.player.id);
+  const myPair = myInscription?.pairId
+    ? pairs.find((p) => p.id === myInscription.pairId) ?? null
+    : null;
+  const partner = myPair
+    ? players.find(
+        (p) =>
+          p.id ===
+          (myPair.playerAId === session.player.id
+            ? myPair.playerBId
+            : myPair.playerAId),
+      ) ?? null
+    : null;
+  const pairFallback = myPair
+    ? `${session.displayName} / ${partner?.displayName ?? '—'}`
+    : '';
+
   return (
     <div className="space-y-6">
       <Link
@@ -85,6 +104,34 @@ export default async function TournamentDetailPage({
           />
         </dl>
       </Card>
+
+      {myPair ? (
+        <Card>
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <CardEyebrow>Tu pareja</CardEyebrow>
+              <div className="mt-2">
+                <EditablePairName
+                  pairId={myPair.id}
+                  displayName={myPair.displayName}
+                  fallback={pairFallback}
+                />
+              </div>
+              <div className="mt-3">
+                <PairLine
+                  playerA={
+                    players.find((p) => p.id === myPair.playerAId) ?? null
+                  }
+                  playerB={
+                    players.find((p) => p.id === myPair.playerBId) ?? null
+                  }
+                  size="xs"
+                />
+              </div>
+            </div>
+          </div>
+        </Card>
+      ) : null}
 
       {isOwner ? (
         <Card>
@@ -174,6 +221,7 @@ export default async function TournamentDetailPage({
                   id: p.id,
                   playerAId: p.playerAId,
                   playerBId: p.playerBId,
+                  displayName: p.displayName,
                 }))}
               />
             </Card>

@@ -6,7 +6,7 @@ const player = (id: string, rating: number, matchesPlayed = 20): Player => ({
   id, profileId: `p-${id}`, displayName: id, avatarUrl: null, rating, matchesPlayed,
 });
 const pair = (id: string, a: string, b: string, rating: number): Pair => ({
-  id, playerAId: a, playerBId: b, rating,
+  id, playerAId: a, playerBId: b, rating, displayName: null,
 });
 const baseMatch: Match = {
   id: 'm1', tournamentId: 't1', phase: 'group', groupId: 'g1',

@@ -78,6 +78,8 @@ export function KnockoutView({
                 );
                 const a = pairPlayers(m.pairAId);
                 const b = pairPlayers(m.pairBId);
+                const pairAName = pairById.get(m.pairAId)?.displayName ?? null;
+                const pairBName = pairById.get(m.pairBId)?.displayName ?? null;
                 const status = result?.status ?? 'pending';
                 const sets = result?.sets;
                 return (
@@ -87,8 +89,18 @@ export function KnockoutView({
                       className="group flex cursor-pointer flex-col gap-3 rounded-[var(--radius-md)] border border-[color:var(--color-line)] bg-[color:var(--color-surface)] px-3 py-3 transition-colors duration-[var(--duration-fast)] hover:border-[color:var(--color-accent)]/40 sm:flex-row sm:items-center sm:justify-between"
                     >
                       <div className="flex min-w-0 flex-1 flex-col gap-2">
-                        <PairLine playerA={a.a ?? null} playerB={a.b ?? null} size="xs" />
-                        <PairLine playerA={b.a ?? null} playerB={b.b ?? null} size="xs" />
+                        <PairLine
+                          playerA={a.a ?? null}
+                          playerB={a.b ?? null}
+                          size="xs"
+                          displayName={pairAName}
+                        />
+                        <PairLine
+                          playerA={b.a ?? null}
+                          playerB={b.b ?? null}
+                          size="xs"
+                          displayName={pairBName}
+                        />
                       </div>
                       <div className="flex items-center justify-between gap-3 sm:justify-end">
                         {sets && sets.length > 0 ? (

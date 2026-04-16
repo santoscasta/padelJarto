@@ -3,7 +3,7 @@ import { generateGroups, generateRoundRobinMatches } from '../bracket';
 import type { Pair } from '../types';
 
 const mkPair = (id: string, rating: number): Pair => ({
-  id, playerAId: `${id}-x`, playerBId: `${id}-y`, rating,
+  id, playerAId: `${id}-x`, playerBId: `${id}-y`, rating, displayName: null,
 });
 
 describe('generateGroups', () => {

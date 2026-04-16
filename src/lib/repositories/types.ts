@@ -54,6 +54,11 @@ export interface Repository {
   getPair(id: string): Promise<Pair | null>;
   listPairsForTournament(tournamentId: string): Promise<ReadonlyArray<Pair>>;
   listPairsRanked(limit?: number): Promise<ReadonlyArray<Pair>>;
+  /**
+   * Set (or clear) the custom display name for a pair. Auth must already
+   * be enforced by the caller — the repo only performs the write.
+   */
+  updatePairDisplayName(pairId: string, displayName: string | null): Promise<Pair>;
 
   // tournaments
   createTournament(input: NewTournamentInput): Promise<Tournament>;

@@ -304,6 +304,50 @@ export async function unpairAction(
   });
 }
 
+const UpdatePairDisplayNameSchema = z.object({
+  pairId: z.string().uuid(),
+  // null or empty string clears the name; otherwise 1–40 chars after trim.
+  displayName: z
+    .union([z.string().trim().min(1).max(40), z.literal(''), z.null()])
+    .transform((v) => (v === '' || v === null ? null : v)),
+});
+
+export async function updatePairDisplayNameAction(
+  input: z.input<typeof UpdatePairDisplayNameSchema>,
+): Promise<ActionResult<{ displayName: string | null }>> {
+  return withAuth(async (session) => {
+    const parsed = UpdatePairDisplayNameSchema.safeParse(input);
+    if (!parsed.success) {
+      return fail(
+        'VALIDATION_FAILED',
+        'Nombre inválido (1 a 40 caracteres)',
+        fieldsFromZod(parsed.error),
+      );
+    }
+    const { pairId, displayName } = parsed.data;
+    const repo = await getRepo();
+    const pair = await repo.getPair(pairId);
+    if (!pair) return fail('NOT_FOUND', 'Pareja no encontrada');
+    // Only the two pair members can rename the pair (RLS also enforces it,
+    // but failing early here produces a clearer error for the UI).
+    if (
+      pair.playerAId !== session.player.id
+      && pair.playerBId !== session.player.id
+    ) {
+      return fail(
+        'NOT_AUTHORIZED',
+        'Solo los miembros de la pareja pueden renombrarla',
+      );
+    }
+    const updated = await repo.updatePairDisplayName(pairId, displayName);
+    // Refresh any page that might surface the pair name.
+    revalidatePath('/app');
+    revalidatePath('/app/tournaments');
+    revalidatePath('/app/leaderboard');
+    return ok({ displayName: updated.displayName });
+  });
+}
+
 export async function advanceToKnockoutAction(tournamentId: string): Promise<ActionResult<Tournament>> {
   return withAuth(async (session) => {
     const repo = await getRepo();

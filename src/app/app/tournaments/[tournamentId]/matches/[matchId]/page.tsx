@@ -101,11 +101,23 @@ export default async function MatchPage({
         </div>
 
         <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 rounded-[var(--radius-md)] border border-[color:var(--color-line)] bg-[color:var(--color-surface-2)] p-4">
-          <PairSide playerA={a1} playerB={a2} won={aWon} align="left" />
+          <PairSide
+            playerA={a1}
+            playerB={a2}
+            displayName={pairA.displayName}
+            won={aWon}
+            align="left"
+          />
           <span className="font-[family-name:var(--font-display)] text-xl font-bold uppercase tracking-tight text-[color:var(--color-ink-mute)]">
             vs
           </span>
-          <PairSide playerA={b1} playerB={b2} won={bWon} align="right" />
+          <PairSide
+            playerA={b1}
+            playerB={b2}
+            displayName={pairB.displayName}
+            won={bWon}
+            align="right"
+          />
         </div>
 
         {existingResult ? (
@@ -145,14 +157,20 @@ type Player = Readonly<{ displayName: string; avatarUrl: string | null }>;
 function PairSide({
   playerA,
   playerB,
+  displayName,
   won,
   align,
 }: {
   playerA: Player | undefined;
   playerB: Player | undefined;
+  displayName: string | null;
   won: boolean;
   align: 'left' | 'right';
 }) {
+  const customName =
+    typeof displayName === 'string' && displayName.trim().length > 0
+      ? displayName.trim()
+      : null;
   return (
     <div
       className={cn(
@@ -161,22 +179,40 @@ function PairSide({
       )}
     >
       <PairLine playerA={playerA} playerB={playerB} size="md" avatarsOnly />
-      <span
-        className={cn(
-          'mt-1 max-w-full truncate font-[family-name:var(--font-display)] text-base font-bold uppercase tracking-tight',
-          won ? 'text-[color:var(--color-accent)]' : 'text-[color:var(--color-ink)]',
-        )}
-      >
-        {playerA?.displayName ?? '—'}
-      </span>
-      <span
-        className={cn(
-          'max-w-full truncate text-sm',
-          won ? 'text-[color:var(--color-accent)]/90' : 'text-[color:var(--color-ink-soft)]',
-        )}
-      >
-        {playerB?.displayName ?? '—'}
-      </span>
+      {customName ? (
+        <>
+          <span
+            className={cn(
+              'mt-1 max-w-full truncate font-[family-name:var(--font-display)] text-base font-bold uppercase tracking-tight',
+              won ? 'text-[color:var(--color-accent)]' : 'text-[color:var(--color-ink)]',
+            )}
+          >
+            {customName}
+          </span>
+          <span className="max-w-full truncate text-xs text-[color:var(--color-ink-mute)]">
+            {playerA?.displayName ?? '—'} / {playerB?.displayName ?? '—'}
+          </span>
+        </>
+      ) : (
+        <>
+          <span
+            className={cn(
+              'mt-1 max-w-full truncate font-[family-name:var(--font-display)] text-base font-bold uppercase tracking-tight',
+              won ? 'text-[color:var(--color-accent)]' : 'text-[color:var(--color-ink)]',
+            )}
+          >
+            {playerA?.displayName ?? '—'}
+          </span>
+          <span
+            className={cn(
+              'max-w-full truncate text-sm',
+              won ? 'text-[color:var(--color-accent)]/90' : 'text-[color:var(--color-ink-soft)]',
+            )}
+          >
+            {playerB?.displayName ?? '—'}
+          </span>
+        </>
+      )}
     </div>
   );
 }
