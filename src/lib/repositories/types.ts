@@ -48,6 +48,15 @@ export interface Repository {
   ): Promise<Player>;
   listPlayers(): Promise<ReadonlyArray<Player>>;
   getPlayer(id: string): Promise<Player | null>;
+  /**
+   * Update the caller's own profile. `displayName` is trimmed 1-40 chars;
+   * `avatarUrl` may be any string (including a Supabase Storage public URL)
+   * or null to clear. Auth must be enforced by the caller — the repo only writes.
+   */
+  updateMyProfile(
+    profileId: string,
+    patch: Readonly<{ displayName?: string; avatarUrl?: string | null }>,
+  ): Promise<Player>;
 
   // pairs
   upsertPair(playerAId: string, playerBId: string): Promise<Pair>;

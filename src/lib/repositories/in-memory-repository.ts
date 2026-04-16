@@ -85,6 +85,34 @@ export class InMemoryRepository implements Repository {
   async getPlayer(id: string): Promise<Player | null> {
     return this.players.get(id) ?? null;
   }
+  async updateMyProfile(
+    profileId: string,
+    patch: Readonly<{ displayName?: string; avatarUrl?: string | null }>,
+  ): Promise<Player> {
+    const existing = await this.getPlayerByProfileId(profileId);
+    if (!existing) throw new Error('PROFILE_NOT_FOUND');
+    const nextName =
+      patch.displayName !== undefined
+        ? (() => {
+            const t = patch.displayName.trim();
+            if (t.length === 0) throw new Error('DISPLAY_NAME_EMPTY');
+            return t;
+          })()
+        : existing.displayName;
+    const nextAvatar =
+      patch.avatarUrl === undefined
+        ? existing.avatarUrl
+        : patch.avatarUrl === null
+          ? null
+          : patch.avatarUrl.trim();
+    const next: Player = {
+      ...existing,
+      displayName: nextName,
+      avatarUrl: nextAvatar,
+    };
+    this.players.set(existing.id, next);
+    return next;
+  }
 
   // -- pairs --
   async upsertPair(playerAId: string, playerBId: string): Promise<Pair> {

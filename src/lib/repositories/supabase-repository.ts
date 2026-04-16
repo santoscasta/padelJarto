@@ -51,30 +51,16 @@ export class SupabaseRepository implements Repository {
     displayName: string,
     avatarUrl?: string | null,
   ): Promise<Player> {
-    // Refresh the Google avatar on every session so it stays in sync with the
-    // provider. Only updates if the caller actually has a URL to offer.
-    if (avatarUrl) {
-      const { error: avatarError } = await this.admin
-        .from('profiles')
-        .update({ avatar_url: avatarUrl })
-        .eq('id', profileId);
-      if (avatarError) {
-        // Non-fatal: a stale avatar shouldn't block login.
-        console.warn('[supabase-repo] avatar sync failed:', avatarError.message);
-      }
-    }
-
+    // Display name + avatar are seeded on signup via the handle_new_auth_user
+    // trigger (reading Google metadata). After signup, only the user can edit
+    // them via /app/me/edit — we do NOT overwrite on every login, otherwise a
+    // custom name/photo would be wiped the next time the Google avatar URL
+    // rotated.
     const existing = await this.getPlayerByProfileId(profileId);
-    if (existing) {
-      // If the cached Player row was fetched before the avatar update above,
-      // splice the fresh URL in so callers don't see a stale value.
-      return avatarUrl && existing.avatarUrl !== avatarUrl
-        ? { ...existing, avatarUrl }
-        : existing;
-    }
+    if (existing) return existing;
 
-    // The trigger normally creates this, but if the profile already exists without
-    // a player (e.g. historical data), insert defensively via the admin client.
+    // Defensive fallback: if the trigger didn't run (historical data), create
+    // the player row ourselves using the seed values from the auth metadata.
     const { data, error } = await this.admin
       .from('players')
       .insert({ profile_id: profileId })
@@ -104,6 +90,39 @@ export class SupabaseRepository implements Repository {
       .maybeSingle();
     if (error) throw error;
     return data ? mapPlayer(data) : null;
+  }
+
+  async updateMyProfile(
+    profileId: string,
+    patch: Readonly<{ displayName?: string; avatarUrl?: string | null }>,
+  ): Promise<Player> {
+    const row: Record<string, unknown> = {};
+    if (patch.displayName !== undefined) {
+      const trimmed = patch.displayName.trim();
+      if (trimmed.length === 0) throw new Error('DISPLAY_NAME_EMPTY');
+      row.display_name = trimmed;
+    }
+    if (patch.avatarUrl !== undefined) {
+      // Allow null to clear. Trim stray whitespace from pasted URLs.
+      row.avatar_url = patch.avatarUrl === null ? null : patch.avatarUrl.trim();
+    }
+    if (Object.keys(row).length === 0) {
+      // Nothing to patch — just return current state.
+      const current = await this.getPlayerByProfileId(profileId);
+      if (!current) throw new Error('PROFILE_NOT_FOUND');
+      return current;
+    }
+    // Goes through the user-authenticated client so profiles_self_update RLS
+    // (auth.uid() = id) enforces that only the owner can write.
+    const { error: updateError } = await this.db
+      .from('profiles')
+      .update(row)
+      .eq('id', profileId);
+    if (updateError) throw updateError;
+
+    const refreshed = await this.getPlayerByProfileId(profileId);
+    if (!refreshed) throw new Error('PROFILE_NOT_FOUND');
+    return refreshed;
   }
 
   // ---------- pairs ----------

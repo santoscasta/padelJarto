@@ -1,9 +1,12 @@
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { TrendingUp, TrendingDown } from 'lucide-react';
+import { TrendingUp, TrendingDown, Pencil } from 'lucide-react';
 import { Card, CardEyebrow } from '@/components/ui/Card';
 import { Avatar } from '@/components/ui/Avatar';
 import { Stat } from '@/components/ui/Stat';
+import { Button } from '@/components/ui/Button';
 import { getRepo } from '@/lib/repositories/provider';
+import { getSession } from '@/lib/auth/session';
 import { cn } from '@/lib/utils/cn';
 
 export default async function PlayerProfilePage({
@@ -11,8 +14,12 @@ export default async function PlayerProfilePage({
 }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const repo = await getRepo();
-  const player = await repo.getPlayer(id);
+  const [player, session] = await Promise.all([
+    repo.getPlayer(id),
+    getSession().catch(() => null),
+  ]);
   if (!player) notFound();
+  const isSelf = session?.player.id === player.id;
   const snapshots = await repo.listRatingSnapshotsForSubject('player', id);
   const ratings = snapshots.map((s) => s.after);
   const min = ratings.length ? Math.min(...ratings) : player.rating;
@@ -23,14 +30,24 @@ export default async function PlayerProfilePage({
   return (
     <div className="space-y-6">
       <Card variant="spotlight">
-        <div className="flex items-center gap-4">
-          <Avatar src={player.avatarUrl} name={player.displayName} size="xl" />
-          <div className="min-w-0">
-            <CardEyebrow>Jugador</CardEyebrow>
-            <h1 className="mt-1 truncate font-[family-name:var(--font-display)] text-[length:var(--text-display)] font-bold uppercase tracking-tight">
-              {player.displayName}
-            </h1>
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-4">
+            <Avatar src={player.avatarUrl} name={player.displayName} size="xl" />
+            <div className="min-w-0">
+              <CardEyebrow>Jugador</CardEyebrow>
+              <h1 className="mt-1 truncate font-[family-name:var(--font-display)] text-[length:var(--text-display)] font-bold uppercase tracking-tight">
+                {player.displayName}
+              </h1>
+            </div>
           </div>
+          {isSelf ? (
+            <Button asChild size="sm" variant="secondary" className="shrink-0">
+              <Link href="/app/me/edit" aria-label="Editar mi perfil">
+                <Pencil className="h-4 w-4" aria-hidden />
+                Editar
+              </Link>
+            </Button>
+          ) : null}
         </div>
 
         <dl className="mt-7 grid grid-cols-3 gap-4">
