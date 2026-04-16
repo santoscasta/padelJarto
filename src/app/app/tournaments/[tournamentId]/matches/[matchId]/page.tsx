@@ -174,7 +174,7 @@ function PairSide({
   return (
     <div
       className={cn(
-        'flex flex-col gap-1.5',
+        'flex min-w-0 flex-col gap-1.5',
         align === 'right' ? 'items-end text-right' : 'items-start',
       )}
     >
