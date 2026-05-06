@@ -421,38 +421,31 @@ export class SupabaseRepository implements Repository {
   }
 
   async validateResult(input: ValidateResultInput): Promise<Result> {
-    // Use admin client so we can atomically write snapshots + updates.
     const admin = this.admin;
-    const { data: result, error: upErr } = await admin
-      .from('results')
-      .update({
-        status: 'validated',
-        validated_by: input.validatorId,
-        validated_at: input.validatedAt,
-      })
-      .eq('id', input.resultId)
-      .select('*').single();
-    if (upErr) throw upErr;
+    const snapshotsPayload = input.snapshots.map((s) => ({
+      subject_type: s.subjectType,
+      subject_id: s.subjectId,
+      before: s.before,
+      after: s.after,
+      delta: s.delta,
+      match_id: s.matchId,
+    }));
+    const { error: rpcErr } = await admin.rpc('apply_validated_result', {
+      p_result_id: input.resultId,
+      p_validator: input.validatorId,
+      p_validated_at: input.validatedAt,
+      p_snapshots: snapshotsPayload,
+      p_player_ratings: input.newPlayerRatings,
+      p_pair_ratings: input.newPairRatings,
+    });
+    if (rpcErr) throw rpcErr;
 
-    if (input.snapshots.length) {
-      const rows = input.snapshots.map((s) => ({
-        id: s.id, subject_type: s.subjectType, subject_id: s.subjectId,
-        before: s.before, after: s.after, delta: s.delta,
-        match_id: s.matchId, result_id: s.resultId, created_at: s.createdAt,
-      }));
-      const { error: sErr } = await admin.from('rating_snapshots').insert(rows);
-      if (sErr) throw sErr;
-    }
-    for (const [pid, rating] of Object.entries(input.newPlayerRatings)) {
-      const { error } = await admin.rpc('increment_matches_and_set_rating', {
-        p_player_id: pid, p_rating: rating,
-      });
-      if (error) throw error;
-    }
-    for (const [pid, rating] of Object.entries(input.newPairRatings)) {
-      const { error } = await admin.from('pairs').update({ rating }).eq('id', pid);
-      if (error) throw error;
-    }
+    const { data: result, error: selErr } = await admin
+      .from('results')
+      .select('*')
+      .eq('id', input.resultId)
+      .single();
+    if (selErr) throw selErr;
     return mapResult(result);
   }
 

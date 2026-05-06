@@ -101,6 +101,8 @@ export type RatingSnapshot = Readonly<{
   createdAt: string;
 }>;
 
+export type NewRatingSnapshot = Omit<RatingSnapshot, 'id'>;
+
 export type Notification = Readonly<{
   id: string;
   userId: string;

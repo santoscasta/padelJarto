@@ -1,10 +1,9 @@
 import {
-  ELO_BASE,
   ELO_K,
   ELO_K_NEWCOMER,
   ELO_NEWCOMER_THRESHOLD,
 } from '../utils/constants';
-import type { Match, Pair, Player, RatingSnapshot, Result } from './types';
+import type { Match, Pair, Player, NewRatingSnapshot, Result } from './types';
 
 export function expectedScore(self: number, opp: number): number {
   return 1 / (1 + 10 ** ((opp - self) / 400));
@@ -22,7 +21,7 @@ export type ApplyRatingInput = {
 };
 
 export type ApplyRatingOutput = Readonly<{
-  snapshots: ReadonlyArray<RatingSnapshot>;
+  snapshots: ReadonlyArray<NewRatingSnapshot>;
   newPlayerRatings: Readonly<Record<string, number>>;
   newPairRatings: Readonly<Record<string, number>>;
 }>;
@@ -55,7 +54,7 @@ export function applyRating(input: ApplyRatingInput): ApplyRatingOutput {
   const avgB = (pB[0].rating + pB[1].rating) / 2;
   const expA = expectedScore(avgA, avgB);
 
-  const snapshots: RatingSnapshot[] = [];
+  const snapshots: NewRatingSnapshot[] = [];
   const newPlayerRatings: Record<string, number> = {};
 
   const sidePlayers: Array<{ p: Player; exp: number; score: number }> = [
@@ -71,7 +70,6 @@ export function applyRating(input: ApplyRatingInput): ApplyRatingOutput {
     const after = p.rating + delta;
     newPlayerRatings[p.id] = after;
     snapshots.push({
-      id: `snap-${match.id}-${p.id}`,
       subjectType: 'player',
       subjectId: p.id,
       before: p.rating,
@@ -84,7 +82,6 @@ export function applyRating(input: ApplyRatingInput): ApplyRatingOutput {
   }
 
   snapshots.push({
-    id: `snap-${match.id}-${pairA.id}`,
     subjectType: 'pair',
     subjectId: pairA.id,
     before: pairA.rating,
@@ -95,7 +92,6 @@ export function applyRating(input: ApplyRatingInput): ApplyRatingOutput {
     createdAt: now,
   });
   snapshots.push({
-    id: `snap-${match.id}-${pairB.id}`,
     subjectType: 'pair',
     subjectId: pairB.id,
     before: pairB.rating,

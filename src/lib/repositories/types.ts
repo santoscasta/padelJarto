@@ -3,6 +3,7 @@ import type {
   Inscription,
   Invitation,
   Match,
+  NewRatingSnapshot,
   Notification,
   Pair,
   Player,
@@ -33,7 +34,7 @@ export type ValidateResultInput = Readonly<{
   matchId: string;
   validatorId: string;
   validatedAt: string;
-  snapshots: ReadonlyArray<RatingSnapshot>;
+  snapshots: ReadonlyArray<NewRatingSnapshot>;
   newPlayerRatings: Readonly<Record<string, number>>;
   newPairRatings: Readonly<Record<string, number>>;
 }>;

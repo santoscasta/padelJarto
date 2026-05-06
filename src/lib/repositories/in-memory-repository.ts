@@ -299,7 +299,9 @@ export class InMemoryRepository implements Repository {
       validatedAt: input.validatedAt,
     };
     this.results.set(r.id, validated);
-    this.snapshots.push(...input.snapshots);
+    for (const s of input.snapshots) {
+      this.snapshots.push({ ...s, id: randomUUID() });
+    }
     for (const [pid, rating] of Object.entries(input.newPlayerRatings)) {
       const p = this.players.get(pid);
       if (p) this.players.set(pid, { ...p, rating, matchesPlayed: p.matchesPlayed + 1 });

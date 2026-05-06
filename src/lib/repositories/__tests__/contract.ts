@@ -87,7 +87,7 @@ export function runRepositoryContract(
         resultId: reported.id, matchId: m.id,
         validatorId: 'o', validatedAt: '2026-04-14T10:00:00Z',
         snapshots: [{
-          id: `s-${m.id}-${pairA.id}`, subjectType: 'pair', subjectId: pairA.id,
+          subjectType: 'pair', subjectId: pairA.id,
           before: 1200, after: 1216, delta: 16,
           matchId: m.id, resultId: reported.id, createdAt: '2026-04-14T10:00:00Z',
         }],

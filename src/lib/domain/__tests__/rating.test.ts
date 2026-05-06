@@ -121,7 +121,7 @@ describe('applyRating', () => {
     expect(newPairRatings.pairA - 1400).toBeGreaterThan(0);
   });
 
-  it('emits snapshots with deterministic ids derived from matchId + subjectId', () => {
+  it('emits snapshots tagged with the originating match and result ids', () => {
     const players = {
       p1: player('p1', 1200), p2: player('p2', 1200),
       p3: player('p3', 1200), p4: player('p4', 1200),
@@ -136,11 +136,10 @@ describe('applyRating', () => {
       validatedAt: 'x', status: 'validated', correctsResultId: null,
     };
     const { snapshots } = applyRating({ match: baseMatch, result, players, pairs, now: 'x' });
-    const ids = snapshots.map((s) => s.id);
-    expect(new Set(ids).size).toBe(6);
+    expect(snapshots).toHaveLength(6);
     for (const s of snapshots) {
-      expect(s.id).toContain('m1');
-      expect(s.id).toContain(s.subjectId);
+      expect(s.matchId).toBe('m1');
+      expect(s.resultId).toBe('r1');
     }
   });
 });
